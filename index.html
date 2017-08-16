@@ -18,11 +18,14 @@
  
 <script type="text/javascript"> 
 
+//TODO: echoes should be dampened by checking for similar values instead
 var app1Transmitted = false,
     app2Transmitted = false,
 
     app1Loaded = false,
-    app2Loaded = false;
+    app2Loaded = false,
+
+    pointNames = [];
 
 function ggbOnInit(param) {
   if (param == "ggbApplet") {
@@ -41,6 +44,7 @@ function ggbOnInit(param) {
 
   if (app1Loaded && app2Loaded) {
     makePolygonFromSpreadsheet();
+    makeMidpoints();
   }
 }
 
@@ -55,6 +59,24 @@ function gridObjToSpreadSheetRow(gridObj) {
   return objNumDelta + 3;
 }
 
+function getMaxCoords() {
+  let maxX = 0,
+      maxY = 0;
+  pointNames.forEach(pointName => {
+    let x = ggbApplet.getXcoord(pointName),
+        y = ggbApplet.getYcoord(pointName);
+
+    if (x > maxX) {
+      maxX = x;
+    }
+    if (y > maxY) {
+      maxY = y;
+    }
+  });
+
+  return [maxX, maxY];
+}
+
 function spreadSheetRowToGridObj(spreadsheetRow) {
   return String.fromCharCode(65 + (spreadsheetRow - 3));
 }
@@ -62,7 +84,6 @@ function spreadSheetRowToGridObj(spreadsheetRow) {
 function makePolygonFromSpreadsheet() {
   let coords = [],
       row = 3,
-      pointNames = [],
       pointName = "A",
       polyString = "Poly = Polygon(";
   while (true) {
@@ -88,6 +109,31 @@ function makePolygonFromSpreadsheet() {
     pointName = nextChar(pointName);
   }
 }
+
+function makeMidpoints() {
+  let maxCoords = getMaxCoords(),
+      maxX = maxCoords[0],
+      maxY = maxCoords[1];
+
+  ggbApplet.evalCommand("X_MID = (" + maxX/2 + ", " + maxY + ")");
+  ggbApplet.evalCommand("X_ZERO = (" + 0 + ", " + maxY + ")");
+  ggbApplet.evalCommand("Y_MID = (" + maxX + ", " + maxY/2 + ")");
+  ggbApplet.evalCommand("Y_ZERO = (" + maxX + ", " + 0 + ")");
+  ggbApplet.evalCommand("XY_MAX = (" + maxX + ", " + maxY + ")");
+
+  ggbApplet.setColor("X_MID", 255, 0, 0);
+  ggbApplet.setColor("Y_MID", 255, 0, 0);
+  ggbApplet.setColor("XY_MAX", 255, 0, 0);
+  ggbApplet.setVisible("X_ZERO", false);
+  ggbApplet.setVisible("Y_ZERO", false);
+
+  ggbApplet.evalCommand("TOP_SEG = Segment(X_ZERO, XY_MAX)");
+  ggbApplet.evalCommand("RIGHT_SEG = Segment(Y_ZERO, XY_MAX)");
+  ggbApplet.setLineStyle("TOP_SEG", 1);
+  ggbApplet.setLineStyle("RIGHT_SEG", 1);
+
+  //ggbApplet.registerObjectUpdateListener("Y_MID", "dilateXListener");
+}
  
 function pointListener(objName) {
   if (app2Transmitted) {
@@ -101,7 +147,24 @@ function pointListener(objName) {
 
     ggbApplet2.setValue("A" + row, xCoord);
     ggbApplet2.setValue("B" + row, yCoord);
+
+    makeMidpoints();
   }
+}
+
+function dilateXListener(objName) {
+  let newX = ggbApplet.getXcoord(objName),
+      oldX = getMaxCoords()[0],
+      dilation = newX / oldX;
+
+  pointNames.forEach(pointName => {
+    let xCoord = ggbApplet.getXcoord(pointName),
+        yCoord = ggbApplet.getYcoord(pointName),
+        row = gridObjToSpreadSheetRow(pointName);
+
+    ggbApplet2.setValue("A" + row, xCoord * dilation);
+    ggbApplet2.setValue("B" + row, yCoord * dilation);
+  });
 }
 
 function sheetListener(objName) {
@@ -122,6 +185,8 @@ function sheetListener(objName) {
     } else {
       ggbApplet.setCoords(gridObj, startX, newValue);
     }
+
+    makeMidpoints();
   }
 }
 
