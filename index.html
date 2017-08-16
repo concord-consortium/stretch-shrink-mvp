@@ -18,14 +18,10 @@
  
 <script type="text/javascript"> 
 
-//TODO: echoes should be dampened by checking for similar values instead
-var app1Transmitted = false,
-    app2Transmitted = false,
+  var app1Loaded = false,
+      app2Loaded = false,
 
-    app1Loaded = false,
-    app2Loaded = false,
-
-    pointNames = [];
+      pointNames = [];
 
 function ggbOnInit(param) {
   if (param == "ggbApplet") {
@@ -79,6 +75,18 @@ function getMaxCoords() {
 
 function spreadSheetRowToGridObj(spreadsheetRow) {
   return String.fromCharCode(65 + (spreadsheetRow - 3));
+}
+
+function getPointCoords(pointName) {
+  return [ggbApplet.getXcoord(pointName), ggbApplet.getYcoord(pointName)];
+}
+
+function getRowCoords(rowNum) {
+  return [ggbApplet2.getValue("A" + rowNum), ggbApplet2.getValue("B" + rowNum)];
+}
+
+function arePointsDifferent(point1, point2) {
+  return (Math.abs(point1[0] - point2[0]) > 0.01 || Math.abs(point1[1] - point2[1]) > 0.01)
 }
 
 function makePolygonFromSpreadsheet() {
@@ -136,17 +144,18 @@ function makeMidpoints() {
 }
  
 function pointListener(objName) {
-  if (app2Transmitted) {
-    app2Transmitted = false;
-  } else {
-    console.log("echo");
-    app1Transmitted = true;
-    let xCoord = ggbApplet.getXcoord(objName),
-        yCoord = ggbApplet.getYcoord(objName),
-        row = gridObjToSpreadSheetRow(objName);
+  console.log("echo");
+  let newX = ggbApplet.getXcoord(objName),
+      newY = ggbApplet.getYcoord(objName),
+      row = gridObjToSpreadSheetRow(objName);
 
-    ggbApplet2.setValue("A" + row, xCoord);
-    ggbApplet2.setValue("B" + row, yCoord);
+  let newCoords = getPointCoords(objName),
+      spreadsheetRow = gridObjToSpreadSheetRow(objName),
+      oldCoords = getRowCoords(spreadsheetRow);
+
+  if (arePointsDifferent(newCoords, oldCoords)) {
+    ggbApplet2.setValue("A" + row, newX);
+    ggbApplet2.setValue("B" + row, newY);
 
     makeMidpoints();
   }
@@ -168,23 +177,14 @@ function dilateXListener(objName) {
 }
 
 function sheetListener(objName) {
-  if (app1Transmitted) {
-    app1Transmitted = false;
-  } else {
-    console.log("echo");
-    app2Transmitted = true;
-    let rowNum = parseInt(objName.slice(1)),
-        gridObj = spreadSheetRowToGridObj(rowNum),
-        startX = ggbApplet.getXcoord(gridObj),
-        startY = ggbApplet.getYcoord(gridObj),
-        xChanged = objName.charAt(0) === "A",
-        newValue = ggbApplet2.getValue(objName);
+  console.log("echo");
+  let rowNum = parseInt(objName.slice(1)),
+      gridObj = spreadSheetRowToGridObj(rowNum),
+      oldCoords = getPointCoords(gridObj),
+      newCoords = getRowCoords(rowNum);
 
-    if (xChanged) {
-      ggbApplet.setCoords(gridObj, newValue, startY);
-    } else {
-      ggbApplet.setCoords(gridObj, startX, newValue);
-    }
+  if (arePointsDifferent(oldCoords, newCoords)) {
+    ggbApplet.setCoords(gridObj, newCoords[0], newCoords[1]);
 
     makeMidpoints();
   }
