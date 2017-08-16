@@ -140,7 +140,8 @@ function makeMidpoints() {
   ggbApplet.setLineStyle("TOP_SEG", 1);
   ggbApplet.setLineStyle("RIGHT_SEG", 1);
 
-  //ggbApplet.registerObjectUpdateListener("Y_MID", "dilateXListener");
+  ggbApplet.registerObjectUpdateListener("Y_MID", "dilateXListener");
+  ggbApplet.registerObjectUpdateListener("X_MID", "dilateYListener");
 }
  
 function pointListener(objName) {
@@ -161,6 +162,7 @@ function pointListener(objName) {
   }
 }
 
+// TODO: merge these into a single dilate listener
 function dilateXListener(objName) {
   let newX = ggbApplet.getXcoord(objName),
       oldX = getMaxCoords()[0],
@@ -172,6 +174,19 @@ function dilateXListener(objName) {
         row = gridObjToSpreadSheetRow(pointName);
 
     ggbApplet2.setValue("A" + row, xCoord * dilation);
+  });
+}
+
+function dilateYListener(objName) {
+  let newY = ggbApplet.getYcoord(objName),
+      oldY = getMaxCoords()[1],
+      dilation = newY / oldY;
+
+  pointNames.forEach(pointName => {
+    let xCoord = ggbApplet.getXcoord(pointName),
+        yCoord = ggbApplet.getYcoord(pointName),
+        row = gridObjToSpreadSheetRow(pointName);
+
     ggbApplet2.setValue("B" + row, yCoord * dilation);
   });
 }
