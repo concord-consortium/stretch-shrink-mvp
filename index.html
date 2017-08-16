@@ -18,7 +18,10 @@
  
 <script type="text/javascript"> 
 
-  var app1Loaded = false,
+  var lockNames = ["sheetListener", "pointListener", "dilationListener"],
+      availableLocks = ["sheetListener", "pointListener", "dilationListener"],
+
+      app1Loaded = false,
       app2Loaded = false,
 
       pointNames = [];
@@ -39,9 +42,34 @@ function ggbOnInit(param) {
   }
 
   if (app1Loaded && app2Loaded) {
-    makePolygonFromSpreadsheet();
+    makePolygonFromSpreadsheet("A", "B");
+    makePolygonFromSpreadsheet("D", "E", "'");
     makeMidpoints();
   }
+}
+
+function lock(lockName) {
+  let lockIndex = availableLocks.indexOf(lockName);
+  if (lockIndex === -1) {
+    console.log("ERROR: requesting taken lock");
+  }
+  availableLocks.splice(lockIndex, 1);
+}
+
+function unlock(lockName) {
+  availableLocks.push(lockName);
+}
+
+function lockAll() {
+  availableLocks = [];
+}
+
+function unlockAll() {
+  availableLocks = lockNames.slice(0);
+}
+
+function isLocked(lockName) {
+  return availableLocks.indexOf(lockName) === -1;
 }
 
 function nextChar(c) {
@@ -89,19 +117,21 @@ function arePointsDifferent(point1, point2) {
   return (Math.abs(point1[0] - point2[0]) > 0.01 || Math.abs(point1[1] - point2[1]) > 0.01)
 }
 
-function makePolygonFromSpreadsheet() {
+function makePolygonFromSpreadsheet(xColumn, yColumn, pointSuffix = "") {
   let coords = [],
       row = 3,
       pointName = "A",
-      polyString = "Poly = Polygon(";
+      polyString = "Poly" + pointSuffix + " = Polygon(";
   while (true) {
-    let xCoord = ggbApplet2.getValue("A" + row),
-        yCoord = ggbApplet2.getValue("B" + row);
+    let xCoord = ggbApplet2.getValue(xColumn + row),
+        yCoord = ggbApplet2.getValue(yColumn + row);
 
     if (!isNaN(xCoord) && !isNaN(yCoord)) {
-      ggbApplet.evalCommand(pointName + " = (" + xCoord + ", " + yCoord + ")");
-      polyString += pointName + ", ";
-      pointNames.push(pointName);
+      ggbApplet.evalCommand(pointName + pointSuffix + " = (" + xCoord + ", " + yCoord + ")");
+      polyString += pointName + pointSuffix + ", ";
+      if (pointNames.indexOf(pointName) === -1) {
+        pointNames.push(pointName);
+      }
     } else {
       polyString = polyString.slice(0, polyString.length - 2) + ")";
       ggbApplet.evalCommand(polyString);
@@ -145,63 +175,83 @@ function makeMidpoints() {
 }
  
 function pointListener(objName) {
-  console.log("echo");
-  let newX = ggbApplet.getXcoord(objName),
-      newY = ggbApplet.getYcoord(objName),
-      row = gridObjToSpreadSheetRow(objName);
+  if (!isLocked("pointListener")) {
+    lockAll()
+    console.log("echo");
+    let newX = ggbApplet.getXcoord(objName),
+        newY = ggbApplet.getYcoord(objName),
+        row = gridObjToSpreadSheetRow(objName);
 
-  let newCoords = getPointCoords(objName),
-      spreadsheetRow = gridObjToSpreadSheetRow(objName),
-      oldCoords = getRowCoords(spreadsheetRow);
+    let newCoords = getPointCoords(objName),
+        spreadsheetRow = gridObjToSpreadSheetRow(objName),
+        oldCoords = getRowCoords(spreadsheetRow);
 
-  if (arePointsDifferent(newCoords, oldCoords)) {
     ggbApplet2.setValue("A" + row, newX);
     ggbApplet2.setValue("B" + row, newY);
 
     makeMidpoints();
+
+    unlockAll();
   }
 }
 
 // TODO: merge these into a single dilate listener
 function dilateXListener(objName) {
-  let newX = ggbApplet.getXcoord(objName),
-      oldX = getMaxCoords()[0],
-      dilation = newX / oldX;
+  if (!isLocked("dilationListener")) {
+    lock("pointListener");
+    lock("dilationListener");
+    let newX = ggbApplet.getXcoord(objName),
+        oldX = getMaxCoords()[0],
+        dilation = newX / oldX;
 
-  pointNames.forEach(pointName => {
-    let xCoord = ggbApplet.getXcoord(pointName),
-        yCoord = ggbApplet.getYcoord(pointName),
-        row = gridObjToSpreadSheetRow(pointName);
+    pointNames.forEach(pointName => {
+      let oldPointCoords = getPointCoords(pointName),
+          newPointCoords = [oldPointCoords[0] * dilation, oldPointCoords[1]],
+          row = gridObjToSpreadSheetRow(pointName);
 
-    ggbApplet2.setValue("A" + row, xCoord * dilation);
-  });
+      ggbApplet2.setValue("A" + row, newPointCoords[0]);
+    });
+
+    unlock("pointListener");
+    unlock("dilationListener");
+  }
 }
 
 function dilateYListener(objName) {
-  let newY = ggbApplet.getYcoord(objName),
-      oldY = getMaxCoords()[1],
-      dilation = newY / oldY;
+  if (!isLocked("dilationListener")) {
+    lock("pointListener");
+    lock("dilationListener");
+    let newY = ggbApplet.getYcoord(objName),
+        oldY = getMaxCoords()[1],
+        dilation = newY / oldY;
 
-  pointNames.forEach(pointName => {
-    let xCoord = ggbApplet.getXcoord(pointName),
-        yCoord = ggbApplet.getYcoord(pointName),
-        row = gridObjToSpreadSheetRow(pointName);
+    pointNames.forEach(pointName => {
+      let oldPointCoords = getPointCoords(pointName),
+          newPointCoords = [oldPointCoords[0], oldPointCoords[1] * dilation],
+          row = gridObjToSpreadSheetRow(pointName);
 
-    ggbApplet2.setValue("B" + row, yCoord * dilation);
-  });
+      ggbApplet2.setValue("B" + row, newPointCoords[1]);
+    });
+
+    unlock("pointListener");
+    unlock("dilationListener");
+  }
 }
 
 function sheetListener(objName) {
-  console.log("echo");
-  let rowNum = parseInt(objName.slice(1)),
-      gridObj = spreadSheetRowToGridObj(rowNum),
-      oldCoords = getPointCoords(gridObj),
-      newCoords = getRowCoords(rowNum);
+  if (!isLocked("sheetListener")) {
+    lockAll()
+    console.log("echo");
+    let rowNum = parseInt(objName.slice(1)),
+        gridObj = spreadSheetRowToGridObj(rowNum),
+        oldCoords = getPointCoords(gridObj),
+        newCoords = getRowCoords(rowNum);
 
-  if (arePointsDifferent(oldCoords, newCoords)) {
     ggbApplet.setCoords(gridObj, newCoords[0], newCoords[1]);
 
     makeMidpoints();
+
+    unlockAll();
   }
 }
 
