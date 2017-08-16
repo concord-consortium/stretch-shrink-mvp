@@ -18,8 +18,8 @@
  
 <script type="text/javascript"> 
 
-  var lockNames = ["sheetListener", "pointListener", "dilationListener"],
-      availableLocks = ["sheetListener", "pointListener", "dilationListener"],
+  var lockNames = ["sheetListener", "pointListener", "dilationListener", "sheetTransformationListener"],
+      availableLocks = ["sheetListener", "pointListener", "dilationListener", "sheetTransformationListener"],
 
       app1Loaded = false,
       app2Loaded = false,
@@ -38,6 +38,13 @@ function ggbOnInit(param) {
     ggbApplet2.registerObjectUpdateListener("B4", "sheetListener");
     ggbApplet2.registerObjectUpdateListener("A5", "sheetListener");
     ggbApplet2.registerObjectUpdateListener("B5", "sheetListener");
+
+    ggbApplet2.registerObjectUpdateListener("D3", "sheetTransformationListener");
+    ggbApplet2.registerObjectUpdateListener("E3", "sheetTransformationListener");
+    ggbApplet2.registerObjectUpdateListener("D4", "sheetTransformationListener");
+    ggbApplet2.registerObjectUpdateListener("E4", "sheetTransformationListener");
+    ggbApplet2.registerObjectUpdateListener("D5", "sheetTransformationListener");
+    ggbApplet2.registerObjectUpdateListener("E5", "sheetTransformationListener");
     app2Loaded = true;
   }
 
@@ -50,10 +57,9 @@ function ggbOnInit(param) {
 
 function lock(lockName) {
   let lockIndex = availableLocks.indexOf(lockName);
-  if (lockIndex === -1) {
-    console.log("ERROR: requesting taken lock");
+  if (lockIndex > -1) {
+    availableLocks.splice(lockIndex, 1);
   }
-  availableLocks.splice(lockIndex, 1);
 }
 
 function unlock(lockName) {
@@ -109,8 +115,8 @@ function getPointCoords(pointName) {
   return [ggbApplet.getXcoord(pointName), ggbApplet.getYcoord(pointName)];
 }
 
-function getRowCoords(rowNum) {
-  return [ggbApplet2.getValue("A" + rowNum), ggbApplet2.getValue("B" + rowNum)];
+function getRowCoords(rowNum, xCol = "A", yCol = "B") {
+  return [ggbApplet2.getValue(xCol + rowNum), ggbApplet2.getValue(yCol + rowNum)];
 }
 
 function arePointsDifferent(point1, point2) {
@@ -176,8 +182,9 @@ function makeMidpoints() {
  
 function pointListener(objName) {
   if (!isLocked("pointListener")) {
-    lockAll()
-    console.log("echo");
+    lock("sheetListener");
+    lock("dilationListener");
+    console.log("Point listener: " + objName);
     let newX = ggbApplet.getXcoord(objName),
         newY = ggbApplet.getYcoord(objName),
         row = gridObjToSpreadSheetRow(objName);
@@ -191,13 +198,15 @@ function pointListener(objName) {
 
     makeMidpoints();
 
-    unlockAll();
+    unlock("sheetListener");
+    unlock("dilationListener");
   }
 }
 
 // TODO: merge these into a single dilate listener
 function dilateXListener(objName) {
   if (!isLocked("dilationListener")) {
+    console.log("Dilate listener: " + objName);
     lock("pointListener");
     lock("dilationListener");
     let newX = ggbApplet.getXcoord(objName),
@@ -219,6 +228,7 @@ function dilateXListener(objName) {
 
 function dilateYListener(objName) {
   if (!isLocked("dilationListener")) {
+    console.log("Dilate listener: " + objName);
     lock("pointListener");
     lock("dilationListener");
     let newY = ggbApplet.getYcoord(objName),
@@ -240,8 +250,9 @@ function dilateYListener(objName) {
 
 function sheetListener(objName) {
   if (!isLocked("sheetListener")) {
-    lockAll()
-    console.log("echo");
+    lock("dilationListener");
+    lock("pointListener");
+    console.log("Sheet listener: " + objName);
     let rowNum = parseInt(objName.slice(1)),
         gridObj = spreadSheetRowToGridObj(rowNum),
         oldCoords = getPointCoords(gridObj),
@@ -251,7 +262,23 @@ function sheetListener(objName) {
 
     makeMidpoints();
 
-    unlockAll();
+    unlock("dilationListener");
+    unlock("pointListener");
+  }
+}
+
+function sheetTransformationListener(objName) {
+  if (!isLocked("sheetTransformationListener")) {
+    lock("pointListener");
+    console.log("Sheet transform listener: " + objName);
+    let rowNum = parseInt(objName.slice(1)),
+        gridObj = spreadSheetRowToGridObj(rowNum) + "'",
+        oldCoords = getPointCoords(gridObj),
+        newCoords = getRowCoords(rowNum, "D", "E");
+
+    ggbApplet.setCoords(gridObj, newCoords[0], newCoords[1]);
+
+    unlock("pointListener");
   }
 }
 
