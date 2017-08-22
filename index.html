@@ -216,6 +216,17 @@ function pointListener(objName) {
   }
 }
 
+function dilateTransformedSheetPoints(dilations) {
+  pointNames.forEach(pointName => {
+    let basePointCoords = getPointCoords(pointName),
+        newPointCoords = [basePointCoords[0] * dilations[0], basePointCoords[1] * dilations[1]],
+        row = gridObjToSpreadSheetRow(pointName);
+
+    ggbApplet2.setValue("D" + row, newPointCoords[0]);
+    ggbApplet2.setValue("E" + row, newPointCoords[1]);
+  });
+}
+
 // TODO: merge these into a single dilate listener
 function dilateXListener(objName) {
   if (!isLocked("dilationListener")) {
@@ -223,16 +234,13 @@ function dilateXListener(objName) {
     lock("pointListener");
     lock("dilationListener");
     let newX = ggbApplet.getXcoord(objName),
-        oldX = getMaxCoords("'")[0],
-        dilation = newX / oldX;
+        baseX = getMaxCoords()[0],
+        dilation = newX / baseX,
+        roundedDilation = Math.round(newX / baseX * 100) / 100;
 
-    pointNames.forEach(pointName => {
-      let oldPointCoords = getPointCoords(pointName, "'"),
-          newPointCoords = [oldPointCoords[0] * dilation, oldPointCoords[1]],
-          row = gridObjToSpreadSheetRow(pointName);
+    ggbApplet2.setTextValue("D2", roundedDilation + "x");
 
-      ggbApplet2.setValue("D" + row, newPointCoords[0]);
-    });
+    dilateTransformedSheetPoints([dilation, getDilationRules()[1]]);
 
     unlock("pointListener");
     unlock("dilationListener");
@@ -245,16 +253,13 @@ function dilateYListener(objName) {
     lock("pointListener");
     lock("dilationListener");
     let newY = ggbApplet.getYcoord(objName),
-        oldY = getMaxCoords("'")[1],
-        dilation = newY / oldY;
+        baseY = getMaxCoords()[1],
+        dilation = newY / baseY,
+        roundedDilation = Math.round(newY / baseY * 100) / 100;
 
-    pointNames.forEach(pointName => {
-      let oldPointCoords = getPointCoords(pointName, "'"),
-          newPointCoords = [oldPointCoords[0], oldPointCoords[1] * dilation],
-          row = gridObjToSpreadSheetRow(pointName);
+    ggbApplet2.setTextValue("E2", roundedDilation + "y");
 
-      ggbApplet2.setValue("E" + row, newPointCoords[1]);
-    });
+    dilateTransformedSheetPoints([getDilationRules()[0], dilation]);
 
     unlock("pointListener");
     unlock("dilationListener");
