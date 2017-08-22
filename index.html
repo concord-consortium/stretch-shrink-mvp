@@ -89,11 +89,12 @@ function gridObjToSpreadSheetRow(gridObj) {
   return objNumDelta + 3;
 }
 
-function getMaxCoords() {
+function getMaxCoords(pointSuffix="") {
   let maxX = 0,
       maxY = 0;
-  pointNames.forEach(pointName => {
-    let x = ggbApplet.getXcoord(pointName),
+  pointNames.forEach(basePointName => {
+    let pointName = basePointName + pointSuffix,
+        x = ggbApplet.getXcoord(pointName),
         y = ggbApplet.getYcoord(pointName);
 
     if (x > maxX) {
@@ -111,8 +112,9 @@ function spreadSheetRowToGridObj(spreadsheetRow) {
   return String.fromCharCode(65 + (spreadsheetRow - 3));
 }
 
-function getPointCoords(pointName) {
-  return [ggbApplet.getXcoord(pointName), ggbApplet.getYcoord(pointName)];
+function getPointCoords(pointName, pointSuffix="") {
+  let fullPointName = pointName + pointSuffix;
+  return [ggbApplet.getXcoord(fullPointName), ggbApplet.getYcoord(fullPointName)];
 }
 
 function getRowCoords(rowNum, xCol = "A", yCol = "B") {
@@ -155,7 +157,7 @@ function makePolygonFromSpreadsheet(xColumn, yColumn, pointSuffix = "") {
 }
 
 function makeMidpoints() {
-  let maxCoords = getMaxCoords(),
+  let maxCoords = getMaxCoords("'"),
       maxX = maxCoords[0],
       maxY = maxCoords[1];
 
@@ -179,7 +181,14 @@ function makeMidpoints() {
   ggbApplet.registerObjectUpdateListener("Y_MID", "dilateXListener");
   ggbApplet.registerObjectUpdateListener("X_MID", "dilateYListener");
 }
- 
+
+function getDilationRules() {
+  let xRule = ggbApplet2.getValueString("D2"),
+      yRule = ggbApplet2.getValueString("E2");
+
+  return [xRule.slice(0, xRule.indexOf("x")), yRule.slice(0, yRule.indexOf("y"))];
+}
+
 function pointListener(objName) {
   if (!isLocked("pointListener")) {
     lock("sheetListener");
@@ -196,6 +205,10 @@ function pointListener(objName) {
     ggbApplet2.setValue("A" + row, newX);
     ggbApplet2.setValue("B" + row, newY);
 
+    let dilationRules = getDilationRules();
+    ggbApplet2.setValue("D" + row, newX * dilationRules[0]);
+    ggbApplet2.setValue("E" + row, newY * dilationRules[1]);
+
     makeMidpoints();
 
     unlock("sheetListener");
@@ -206,19 +219,19 @@ function pointListener(objName) {
 // TODO: merge these into a single dilate listener
 function dilateXListener(objName) {
   if (!isLocked("dilationListener")) {
-    console.log("Dilate listener: " + objName);
+    console.log("Dilate X listener: " + objName);
     lock("pointListener");
     lock("dilationListener");
     let newX = ggbApplet.getXcoord(objName),
-        oldX = getMaxCoords()[0],
+        oldX = getMaxCoords("'")[0],
         dilation = newX / oldX;
 
     pointNames.forEach(pointName => {
-      let oldPointCoords = getPointCoords(pointName),
+      let oldPointCoords = getPointCoords(pointName, "'"),
           newPointCoords = [oldPointCoords[0] * dilation, oldPointCoords[1]],
           row = gridObjToSpreadSheetRow(pointName);
 
-      ggbApplet2.setValue("A" + row, newPointCoords[0]);
+      ggbApplet2.setValue("D" + row, newPointCoords[0]);
     });
 
     unlock("pointListener");
@@ -228,19 +241,19 @@ function dilateXListener(objName) {
 
 function dilateYListener(objName) {
   if (!isLocked("dilationListener")) {
-    console.log("Dilate listener: " + objName);
+    console.log("Dilate Y listener: " + objName);
     lock("pointListener");
     lock("dilationListener");
     let newY = ggbApplet.getYcoord(objName),
-        oldY = getMaxCoords()[1],
+        oldY = getMaxCoords("'")[1],
         dilation = newY / oldY;
 
     pointNames.forEach(pointName => {
-      let oldPointCoords = getPointCoords(pointName),
+      let oldPointCoords = getPointCoords(pointName, "'"),
           newPointCoords = [oldPointCoords[0], oldPointCoords[1] * dilation],
           row = gridObjToSpreadSheetRow(pointName);
 
-      ggbApplet2.setValue("B" + row, newPointCoords[1]);
+      ggbApplet2.setValue("E" + row, newPointCoords[1]);
     });
 
     unlock("pointListener");
@@ -260,8 +273,6 @@ function sheetListener(objName) {
 
     ggbApplet.setCoords(gridObj, newCoords[0], newCoords[1]);
 
-    makeMidpoints();
-
     unlock("dilationListener");
     unlock("pointListener");
   }
@@ -277,6 +288,8 @@ function sheetTransformationListener(objName) {
         newCoords = getRowCoords(rowNum, "D", "E");
 
     ggbApplet.setCoords(gridObj, newCoords[0], newCoords[1]);
+
+    makeMidpoints();
 
     unlock("pointListener");
   }
