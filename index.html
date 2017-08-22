@@ -20,6 +20,7 @@
 
   var lockNames = ["sheetListener", "pointListener", "dilationListener", "sheetTransformationListener", "ruleListener"],
       availableLocks = ["sheetListener", "pointListener", "dilationListener", "sheetTransformationListener", "ruleListener"],
+      objectsToListeners = {},
 
       app1Loaded = false,
       app2Loaded = false,
@@ -31,23 +32,7 @@ function ggbOnInit(param) {
     app1Loaded = true;
   }
   if (param == "ggbApplet2") {
-    console.log("Setting listeners");
-    ggbApplet2.registerObjectUpdateListener("A3", "sheetListener");
-    ggbApplet2.registerObjectUpdateListener("B3", "sheetListener");
-    ggbApplet2.registerObjectUpdateListener("A4", "sheetListener");
-    ggbApplet2.registerObjectUpdateListener("B4", "sheetListener");
-    ggbApplet2.registerObjectUpdateListener("A5", "sheetListener");
-    ggbApplet2.registerObjectUpdateListener("B5", "sheetListener");
-
-    ggbApplet2.registerObjectUpdateListener("D3", "sheetTransformationListener");
-    ggbApplet2.registerObjectUpdateListener("E3", "sheetTransformationListener");
-    ggbApplet2.registerObjectUpdateListener("D4", "sheetTransformationListener");
-    ggbApplet2.registerObjectUpdateListener("E4", "sheetTransformationListener");
-    ggbApplet2.registerObjectUpdateListener("D5", "sheetTransformationListener");
-    ggbApplet2.registerObjectUpdateListener("E5", "sheetTransformationListener");
-
-    ggbApplet2.registerObjectUpdateListener("D2", "ruleListener");
-    ggbApplet2.registerObjectUpdateListener("E2", "ruleListener")
+    addSheetListeners();
     app2Loaded = true;
   }
 
@@ -58,27 +43,45 @@ function ggbOnInit(param) {
   }
 }
 
+function addSheetListeners() {
+  addListener(ggbApplet2, "A3", "sheetListener");
+  addListener(ggbApplet2, "B3", "sheetListener");
+  addListener(ggbApplet2, "A4", "sheetListener");
+  addListener(ggbApplet2, "B4", "sheetListener");
+  addListener(ggbApplet2, "A5", "sheetListener");
+  addListener(ggbApplet2, "B5", "sheetListener");
+
+  addListener(ggbApplet2, "D2", "ruleListener");
+  addListener(ggbApplet2, "E2", "ruleListener");
+}
+
+function addListener(app, objName, functionName) {
+  if (objectsToListeners[objName] === undefined) {
+    app.registerObjectUpdateListener(objName, functionName);
+    objectsToListeners[objName] = {app, functionName};
+  }
+}
+
+function removeAllListeners() {
+  Object.keys(objectsToListeners).forEach(objName => {
+    let app = objectsToListeners[objName].app;
+    app.unregisterObjectUpdateListener(objName);
+  });
+}
+
+function reAddAllListeners() {
+  Object.keys(objectsToListeners).forEach(objName => {
+    let app = objectsToListeners[objName].app,
+        functionName = objectsToListeners[objName].functionName;
+    app.registerObjectUpdateListener(objName, functionName);
+  });
+}
+
 function lock(lockName) {
   let lockIndex = availableLocks.indexOf(lockName);
   if (lockIndex > -1) {
     availableLocks.splice(lockIndex, 1);
   }
-}
-
-function unlock(lockName) {
-  availableLocks.push(lockName);
-}
-
-function lockAll() {
-  availableLocks = [];
-}
-
-function unlockAll() {
-  availableLocks = lockNames.slice(0);
-}
-
-function isLocked(lockName) {
-  return availableLocks.indexOf(lockName) === -1;
 }
 
 function nextChar(c) {
@@ -92,6 +95,7 @@ function gridObjToSpreadSheetRow(gridObj) {
   return objNumDelta + 3;
 }
 
+// Retrieves max coords from the graph
 function getMaxCoords(pointSuffix="") {
   let maxX = 0,
       maxY = 0;
@@ -148,7 +152,7 @@ function makePolygonFromSpreadsheet(xColumn, yColumn, pointSuffix = "") {
       ggbApplet.evalCommand(polyString);
 
       pointNames.forEach(pointName => {
-        ggbApplet.registerObjectUpdateListener(pointName, "pointListener");
+        addListener(ggbApplet, pointName, "pointListener");
       });
 
       break;
@@ -159,6 +163,7 @@ function makePolygonFromSpreadsheet(xColumn, yColumn, pointSuffix = "") {
   }
 }
 
+// Assuming that the graph points are correct, draws in new midpoints
 function makeMidpoints() {
   let maxCoords = getMaxCoords("'"),
       maxX = maxCoords[0],
@@ -181,8 +186,8 @@ function makeMidpoints() {
   ggbApplet.setLineStyle("TOP_SEG", 1);
   ggbApplet.setLineStyle("RIGHT_SEG", 1);
 
-  ggbApplet.registerObjectUpdateListener("Y_MID", "dilateXListener");
-  ggbApplet.registerObjectUpdateListener("X_MID", "dilateYListener");
+  addListener(ggbApplet, "Y_MID", "dilateXListener");
+  addListener(ggbApplet, "X_MID", "dilateYListener");
 }
 
 function getDilationRules() {
@@ -193,136 +198,137 @@ function getDilationRules() {
 }
 
 function pointListener(objName) {
-  if (!isLocked("pointListener")) {
-    lock("sheetListener");
-    lock("dilationListener");
-    lock("ruleListener");
-    console.log("Point listener: " + objName);
-    let newX = ggbApplet.getXcoord(objName),
-        newY = ggbApplet.getYcoord(objName),
-        row = gridObjToSpreadSheetRow(objName);
+  removeAllListeners();
 
-    let newCoords = getPointCoords(objName),
-        spreadsheetRow = gridObjToSpreadSheetRow(objName),
-        oldCoords = getRowCoords(spreadsheetRow);
+  console.log("Point listener: " + objName);
+  let newCoords = getPointCoords(objName),
+      spreadsheetRow = gridObjToSpreadSheetRow(objName),
+      oldCoords = getRowCoords(spreadsheetRow);
 
-    ggbApplet2.setValue("A" + row, newX);
-    ggbApplet2.setValue("B" + row, newY);
+  // Update point coords in spreadsheet
+  ggbApplet2.setValue("A" + spreadsheetRow, newCoords[0]);
+  ggbApplet2.setValue("B" + spreadsheetRow, newCoords[1]);
 
-    let dilationRules = getDilationRules();
-    ggbApplet2.setValue("D" + row, newX * dilationRules[0]);
-    ggbApplet2.setValue("E" + row, newY * dilationRules[1]);
+  // Update transformed point coords in spreadsheet
+  let dilationRules = getDilationRules(),
+      dilatedCoords = [newCoords[0] * dilationRules[0], newCoords[1] * dilationRules[1]];
+  ggbApplet2.setValue("D" + spreadsheetRow, dilatedCoords[0]);
+  ggbApplet2.setValue("E" + spreadsheetRow, dilatedCoords[1]);
 
-    makeMidpoints();
+  // Update transformed points on graph
+  ggbApplet.setCoords(objName + "'", dilatedCoords[0], dilatedCoords[1]);
 
-    unlock("ruleListener");
-    unlock("sheetListener");
-    unlock("dilationListener");
-  }
+  makeMidpoints();
+
+  reAddAllListeners();
+}
+
+function sheetListener(objName) {
+  removeAllListeners();
+  
+  console.log("Sheet listener: " + objName);
+  let spreadsheetRow = parseInt(objName.slice(1)),
+      gridObj = spreadSheetRowToGridObj(spreadsheetRow),
+      oldCoords = getPointCoords(gridObj),
+      newCoords = getRowCoords(spreadsheetRow);
+
+  // Update point coords on graph
+  ggbApplet.setCoords(gridObj, newCoords[0], newCoords[1]);
+
+  // Update transformed point coords in spreadsheet
+  let dilationRules = getDilationRules(),
+      dilatedCoords = [newCoords[0] * dilationRules[0], newCoords[1] * dilationRules[1]];
+  ggbApplet2.setValue("D" + spreadsheetRow, dilatedCoords[0]);
+  ggbApplet2.setValue("E" + spreadsheetRow, dilatedCoords[1]);
+
+  // Update transformed points on graph
+  ggbApplet.setCoords(gridObj + "'", dilatedCoords[0], dilatedCoords[1]);
+
+  makeMidpoints();
+
+  reAddAllListeners();
 }
 
 // TODO: merge these into a single dilate listener
 function dilateXListener(objName) {
-  if (!isLocked("dilationListener")) {
-    console.log("Dilate X listener: " + objName);
-    lock("pointListener");
-    lock("dilationListener");
-    let newX = ggbApplet.getXcoord(objName),
-        baseX = getMaxCoords()[0],
-        dilation = newX / baseX,
-        roundedDilation = Math.round(newX / baseX * 100) / 100;
+  removeAllListeners();
 
-    if (Math.abs(dilation - getDilationRules()[0]) > .01) {
-      ggbApplet2.setTextValue("D2", roundedDilation + "x");
-    }
+  console.log("Dilate X listener: " + objName);
+  let newX = ggbApplet.getXcoord(objName),
+      baseX = getMaxCoords()[0],
+      dilation = Math.round(newX / baseX * 100) / 100;
 
-    unlock("pointListener");
-    unlock("dilationListener");
-  }
+  ggbApplet2.setTextValue("D2", dilation + "x");
+
+  pointNames.forEach(pointName => {
+    // Update transformed point coords in spreadsheet
+    let dilationRules = getDilationRules(),
+        spreadsheetRow = gridObjToSpreadSheetRow(pointName),
+        baseCoords = getRowCoords(spreadsheetRow);
+        dilatedCoords = [baseCoords[0] * dilationRules[0], baseCoords[1] * dilationRules[1]];
+
+    ggbApplet2.setValue("D" + spreadsheetRow, dilatedCoords[0]);
+    ggbApplet2.setValue("E" + spreadsheetRow, dilatedCoords[1]);
+
+    // Update transformed points on graph
+    ggbApplet.setCoords(pointName + "'", dilatedCoords[0], dilatedCoords[1]);
+  })
+
+  makeMidpoints();
+
+  reAddAllListeners();
 }
 
 function dilateYListener(objName) {
-  if (!isLocked("dilationListener")) {
-    console.log("Dilate Y listener: " + objName);
-    lock("pointListener");
-    lock("dilationListener");
-    let newY = ggbApplet.getYcoord(objName),
-        baseY = getMaxCoords()[1],
-        dilation = newY / baseY,
-        roundedDilation = Math.round(newY / baseY * 100) / 100;
+  removeAllListeners();
 
-    if (Math.abs(dilation - getDilationRules()[1]) > .01) {
-      ggbApplet2.setTextValue("E2", roundedDilation + "y");
-    }
+  console.log("Dilate Y listener: " + objName);
+  let newY = ggbApplet.getYcoord(objName),
+      baseY = getMaxCoords()[1],
+      dilation = Math.round(newY / baseY * 100) / 100;
 
-    unlock("pointListener");
-    unlock("dilationListener");
-  }
-}
+  ggbApplet2.setTextValue("E2", dilation + "y");
 
-function sheetListener(objName) {
-  if (!isLocked("sheetListener")) {
-    lock("dilationListener");
-    lock("pointListener");
-    lock("ruleListener");
-    console.log("Sheet listener: " + objName);
-    let rowNum = parseInt(objName.slice(1)),
-        gridObj = spreadSheetRowToGridObj(rowNum),
-        oldCoords = getPointCoords(gridObj),
-        newCoords = getRowCoords(rowNum);
+  pointNames.forEach(pointName => {
+    // Update transformed point coords in spreadsheet
+    let dilationRules = getDilationRules(),
+        spreadsheetRow = gridObjToSpreadSheetRow(pointName),
+        baseCoords = getRowCoords(spreadsheetRow);
+        dilatedCoords = [baseCoords[0] * dilationRules[0], baseCoords[1] * dilationRules[1]];
 
-    ggbApplet.setCoords(gridObj, newCoords[0], newCoords[1]);
+    ggbApplet2.setValue("D" + spreadsheetRow, dilatedCoords[0]);
+    ggbApplet2.setValue("E" + spreadsheetRow, dilatedCoords[1]);
 
-    let dilationRules = getDilationRules();
-    ggbApplet2.setValue("D" + rowNum, newCoords[0] * dilationRules[0]);
-    ggbApplet2.setValue("E" + rowNum, newCoords[1] * dilationRules[1]);
+    // Update transformed points on graph
+    ggbApplet.setCoords(pointName + "'", dilatedCoords[0], dilatedCoords[1]);
+  });
 
-    unlock("ruleListener");
-    unlock("dilationListener");
-    unlock("pointListener");
-  }
+  makeMidpoints();
+
+  reAddAllListeners();
 }
 
 function ruleListener(objName) {
-  if (!isLocked("ruleListener")) {
-    lock("pointListener");
-    lock("sheetListener");
+  removeAllListeners();
 
-    console.log("Rule listener: " + objName);
-    let dilations = getDilationRules();
-    pointNames.forEach(pointName => {
-      let basePointCoords = getPointCoords(pointName),
-          newPointCoords = [basePointCoords[0] * dilations[0], basePointCoords[1] * dilations[1]],
-          row = gridObjToSpreadSheetRow(pointName);
+  console.log("Rule listener: " + objName);
+  pointNames.forEach(pointName => {
+    // Update transformed point coords in spreadsheet
+    let dilationRules = getDilationRules(),
+        spreadsheetRow = gridObjToSpreadSheetRow(pointName),
+        baseCoords = getRowCoords(spreadsheetRow);
+        dilatedCoords = [baseCoords[0] * dilationRules[0], baseCoords[1] * dilationRules[1]];
 
-      ggbApplet2.setValue("D" + row, newPointCoords[0]);
-      ggbApplet2.setValue("E" + row, newPointCoords[1]);
-    });
+    ggbApplet2.setValue("D" + spreadsheetRow, dilatedCoords[0]);
+    ggbApplet2.setValue("E" + spreadsheetRow, dilatedCoords[1]);
 
-    unlock("sheetListener")
-    unlock("pointListener");
-  }
-}
+    // Update transformed points on graph
+    ggbApplet.setCoords(pointName + "'", dilatedCoords[0], dilatedCoords[1]);
+  });
 
-function sheetTransformationListener(objName) {
-  if (!isLocked("sheetTransformationListener")) {
-    lock("pointListener");
-    lock("dilationListener");
-    lock("ruleListener");
-    console.log("Sheet transform listener: " + objName);
-    let rowNum = parseInt(objName.slice(1)),
-        gridObj = spreadSheetRowToGridObj(rowNum) + "'",
-        oldCoords = getPointCoords(gridObj),
-        newCoords = getRowCoords(rowNum, "D", "E");
+  makeMidpoints();
 
-    ggbApplet.setCoords(gridObj, newCoords[0], newCoords[1]);
-
-    makeMidpoints();
-
-    unlock("ruleListener");
-    unlock("pointListener");
-    unlock("dilationListener");
-  }
+  reAddAllListeners();
 }
 
 var parameters = {
