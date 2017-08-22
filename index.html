@@ -197,6 +197,22 @@ function getDilationRules() {
   return [parseFloat(xRule.slice(0, xRule.indexOf("x"))), parseFloat(yRule.slice(0, yRule.indexOf("y")))];
 }
 
+// Dilates a point in the graph and corresponding row in spreadsheet. Bases dilation
+// off of base position and rules from the spreadsheet.
+function dilatePoint(pointName) {
+  // Update transformed point coords in spreadsheet
+  let dilationRules = getDilationRules(),
+      spreadsheetRow = gridObjToSpreadSheetRow(pointName),
+      baseCoords = getRowCoords(spreadsheetRow);
+      dilatedCoords = [baseCoords[0] * dilationRules[0], baseCoords[1] * dilationRules[1]];
+
+  ggbApplet2.setValue("D" + spreadsheetRow, dilatedCoords[0]);
+  ggbApplet2.setValue("E" + spreadsheetRow, dilatedCoords[1]);
+
+  // Update transformed points on graph
+  ggbApplet.setCoords(pointName + "'", dilatedCoords[0], dilatedCoords[1]);
+}
+
 function pointListener(objName) {
   removeAllListeners();
 
@@ -210,13 +226,7 @@ function pointListener(objName) {
   ggbApplet2.setValue("B" + spreadsheetRow, newCoords[1]);
 
   // Update transformed point coords in spreadsheet
-  let dilationRules = getDilationRules(),
-      dilatedCoords = [newCoords[0] * dilationRules[0], newCoords[1] * dilationRules[1]];
-  ggbApplet2.setValue("D" + spreadsheetRow, dilatedCoords[0]);
-  ggbApplet2.setValue("E" + spreadsheetRow, dilatedCoords[1]);
-
-  // Update transformed points on graph
-  ggbApplet.setCoords(objName + "'", dilatedCoords[0], dilatedCoords[1]);
+  dilatePoint(objName);
 
   makeMidpoints();
 
@@ -235,14 +245,7 @@ function sheetListener(objName) {
   // Update point coords on graph
   ggbApplet.setCoords(gridObj, newCoords[0], newCoords[1]);
 
-  // Update transformed point coords in spreadsheet
-  let dilationRules = getDilationRules(),
-      dilatedCoords = [newCoords[0] * dilationRules[0], newCoords[1] * dilationRules[1]];
-  ggbApplet2.setValue("D" + spreadsheetRow, dilatedCoords[0]);
-  ggbApplet2.setValue("E" + spreadsheetRow, dilatedCoords[1]);
-
-  // Update transformed points on graph
-  ggbApplet.setCoords(gridObj + "'", dilatedCoords[0], dilatedCoords[1]);
+  dilatePoint(gridObj);
 
   makeMidpoints();
 
@@ -261,18 +264,8 @@ function dilateXListener(objName) {
   ggbApplet2.setTextValue("D2", dilation + "x");
 
   pointNames.forEach(pointName => {
-    // Update transformed point coords in spreadsheet
-    let dilationRules = getDilationRules(),
-        spreadsheetRow = gridObjToSpreadSheetRow(pointName),
-        baseCoords = getRowCoords(spreadsheetRow);
-        dilatedCoords = [baseCoords[0] * dilationRules[0], baseCoords[1] * dilationRules[1]];
-
-    ggbApplet2.setValue("D" + spreadsheetRow, dilatedCoords[0]);
-    ggbApplet2.setValue("E" + spreadsheetRow, dilatedCoords[1]);
-
-    // Update transformed points on graph
-    ggbApplet.setCoords(pointName + "'", dilatedCoords[0], dilatedCoords[1]);
-  })
+    dilatePoint(pointName);
+  });
 
   makeMidpoints();
 
@@ -290,17 +283,7 @@ function dilateYListener(objName) {
   ggbApplet2.setTextValue("E2", dilation + "y");
 
   pointNames.forEach(pointName => {
-    // Update transformed point coords in spreadsheet
-    let dilationRules = getDilationRules(),
-        spreadsheetRow = gridObjToSpreadSheetRow(pointName),
-        baseCoords = getRowCoords(spreadsheetRow);
-        dilatedCoords = [baseCoords[0] * dilationRules[0], baseCoords[1] * dilationRules[1]];
-
-    ggbApplet2.setValue("D" + spreadsheetRow, dilatedCoords[0]);
-    ggbApplet2.setValue("E" + spreadsheetRow, dilatedCoords[1]);
-
-    // Update transformed points on graph
-    ggbApplet.setCoords(pointName + "'", dilatedCoords[0], dilatedCoords[1]);
+    dilatePoint(pointName);
   });
 
   makeMidpoints();
@@ -313,17 +296,7 @@ function ruleListener(objName) {
 
   console.log("Rule listener: " + objName);
   pointNames.forEach(pointName => {
-    // Update transformed point coords in spreadsheet
-    let dilationRules = getDilationRules(),
-        spreadsheetRow = gridObjToSpreadSheetRow(pointName),
-        baseCoords = getRowCoords(spreadsheetRow);
-        dilatedCoords = [baseCoords[0] * dilationRules[0], baseCoords[1] * dilationRules[1]];
-
-    ggbApplet2.setValue("D" + spreadsheetRow, dilatedCoords[0]);
-    ggbApplet2.setValue("E" + spreadsheetRow, dilatedCoords[1]);
-
-    // Update transformed points on graph
-    ggbApplet.setCoords(pointName + "'", dilatedCoords[0], dilatedCoords[1]);
+    dilatePoint(pointName);
   });
 
   makeMidpoints();
