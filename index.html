@@ -192,25 +192,40 @@ function makeMidpoints() {
 
 function getDilationRules() {
   let xRule = ggbApplet2.getValueString("D2"),
-      yRule = ggbApplet2.getValueString("E2");
+      yRule = ggbApplet2.getValueString("E2"),
+      xDilation = parseFloat(xRule.slice(0, xRule.indexOf("x"))),
+      yDilation = parseFloat(yRule.slice(0, yRule.indexOf("y")));
 
-  return [parseFloat(xRule.slice(0, xRule.indexOf("x"))), parseFloat(yRule.slice(0, yRule.indexOf("y")))];
+  return [isNaN(xDilation) ? 1 : xDilation, isNaN(yDilation) ? 1 : yDilation];
 }
 
-// Dilates a point in the graph and corresponding row in spreadsheet. Bases dilation
+function getTranslationRules() {
+  let xRule = ggbApplet2.getValueString("D2"),
+      yRule = ggbApplet2.getValueString("E2"),
+      translationRegex = /(\-|\+)\s*(\d+)/,
+      xMatch = translationRegex.exec(xRule),
+      yMatch = translationRegex.exec(yRule);
+
+  // Grab sign and number for translation rule
+  return [xMatch ? parseFloat(xMatch[1] + xMatch[2]) : 0, yMatch ? parseFloat(yMatch[1] + yMatch[2]) : 0];
+}
+
+// Transforms a point in the graph and corresponding row in spreadsheet. Bases transformation
 // off of base position and rules from the spreadsheet.
-function dilatePoint(pointName) {
+function transformPoint(pointName) {
   // Update transformed point coords in spreadsheet
   let dilationRules = getDilationRules(),
+      translationRules = getTranslationRules(),
       spreadsheetRow = gridObjToSpreadSheetRow(pointName),
-      baseCoords = getRowCoords(spreadsheetRow);
-      dilatedCoords = [baseCoords[0] * dilationRules[0], baseCoords[1] * dilationRules[1]];
+      baseCoords = getRowCoords(spreadsheetRow),
+      dilatedCoords = [baseCoords[0] * dilationRules[0], baseCoords[1] * dilationRules[1]],
+      transformedCoords = [dilatedCoords[0] + translationRules[0], dilatedCoords[1] + translationRules[1]]
 
-  ggbApplet2.setValue("D" + spreadsheetRow, dilatedCoords[0]);
-  ggbApplet2.setValue("E" + spreadsheetRow, dilatedCoords[1]);
+  ggbApplet2.setValue("D" + spreadsheetRow, transformedCoords[0]);
+  ggbApplet2.setValue("E" + spreadsheetRow, transformedCoords[1]);
 
   // Update transformed points on graph
-  ggbApplet.setCoords(pointName + "'", dilatedCoords[0], dilatedCoords[1]);
+  ggbApplet.setCoords(pointName + "'", transformedCoords[0], transformedCoords[1]);
 }
 
 function pointListener(objName) {
@@ -226,7 +241,7 @@ function pointListener(objName) {
   ggbApplet2.setValue("B" + spreadsheetRow, newCoords[1]);
 
   // Update transformed point coords in spreadsheet
-  dilatePoint(objName);
+  transformPoint(objName);
 
   makeMidpoints();
 
@@ -245,7 +260,7 @@ function sheetListener(objName) {
   // Update point coords on graph
   ggbApplet.setCoords(gridObj, newCoords[0], newCoords[1]);
 
-  dilatePoint(gridObj);
+  transformPoint(gridObj);
 
   makeMidpoints();
 
@@ -264,7 +279,7 @@ function dilateXListener(objName) {
   ggbApplet2.setTextValue("D2", dilation + "x");
 
   pointNames.forEach(pointName => {
-    dilatePoint(pointName);
+    transformPoint(pointName);
   });
 
   makeMidpoints();
@@ -283,7 +298,7 @@ function dilateYListener(objName) {
   ggbApplet2.setTextValue("E2", dilation + "y");
 
   pointNames.forEach(pointName => {
-    dilatePoint(pointName);
+    transformPoint(pointName);
   });
 
   makeMidpoints();
@@ -296,7 +311,7 @@ function ruleListener(objName) {
 
   console.log("Rule listener: " + objName);
   pointNames.forEach(pointName => {
-    dilatePoint(pointName);
+    transformPoint(pointName);
   });
 
   makeMidpoints();
