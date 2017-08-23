@@ -39,6 +39,7 @@ function ggbOnInit(param) {
   if (app1Loaded && app2Loaded) {
     makePolygonFromSpreadsheet("A", "B");
     makePolygonFromSpreadsheet("D", "E", "'");
+    addListener(ggbApplet, "Poly'", "translateListener");
     makeMidpoints();
   }
 }
@@ -202,7 +203,7 @@ function getDilationRules() {
 function getTranslationRules() {
   let xRule = ggbApplet2.getValueString("D2"),
       yRule = ggbApplet2.getValueString("E2"),
-      translationRegex = /(\-|\+)\s*(\d+)/,
+      translationRegex = /(\-|\+)\s*(\d*\.{0,1}\d+)/,
       xMatch = translationRegex.exec(xRule),
       yMatch = translationRegex.exec(yRule);
 
@@ -310,6 +311,37 @@ function ruleListener(objName) {
   removeAllListeners();
 
   console.log("Rule listener: " + objName);
+  pointNames.forEach(pointName => {
+    transformPoint(pointName);
+  });
+
+  makeMidpoints();
+
+  reAddAllListeners();
+}
+
+function translateListener(objName) {
+  removeAllListeners();
+
+  console.log("Translate listener: " + objName);
+  let sampleRow = 3,
+      baseObj = spreadSheetRowToGridObj(sampleRow),
+      baseCoords = getPointCoords(baseObj),
+      dilationRules = getDilationRules(),
+      dilatedCoords = [baseCoords[0] * dilationRules[0], baseCoords[1] * dilationRules[1]],
+
+      transformedObj = baseObj + "'",
+      transformedCoords = getPointCoords(transformedObj),
+      newTranslationRules = [Math.round((transformedCoords[0] - dilatedCoords[0]) * 100) / 100, 
+                             Math.round((transformedCoords[1] - dilatedCoords[1]) * 100) / 100];
+
+  ggbApplet2.setTextValue("D2", newTranslationRules[0] >= 0 
+                                  ? dilationRules[0] + "x + " + newTranslationRules[0]
+                                  : dilationRules[0] + "x - " + Math.abs(newTranslationRules[0]));
+  ggbApplet2.setTextValue("E2", newTranslationRules[1] >= 0 
+                                  ? dilationRules[1] + "y + " + newTranslationRules[1]
+                                  : dilationRules[1] + "y - " + Math.abs(newTranslationRules[1]));
+
   pointNames.forEach(pointName => {
     transformPoint(pointName);
   });
