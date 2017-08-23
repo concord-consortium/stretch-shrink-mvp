@@ -1,0 +1,8 @@
+#appContainer {
+  display: flex;
+  flex-direction: row;
+}
+
+.KeyBoard {
+  display: none;
+}

@@ -4,16 +4,16 @@
 <head> 
 <title>GeoGebra and JavaScript</title> 
 <script src="https://cdn.geogebra.org/apps/deployggb.js"></script>
-
+<link rel="stylesheet" type="text/css" href="style.css">
 </head> 
  
 <body> 
  
-<div> 
-
-<div id="ggbApplet"></div>
+<div id="appContainer"> 
 
 <div id="ggbApplet2"></div>
+
+<div id="ggbApplet"></div>
 
  
 <script type="text/javascript"> 
@@ -40,6 +40,7 @@ function ggbOnInit(param) {
     makePolygonFromSpreadsheet("A", "B");
     makePolygonFromSpreadsheet("D", "E", "'");
     addListener(ggbApplet, "Poly'", "translateListener");
+    ggbApplet.setColor("Poly'", 0, 0, 255);
     makeMidpoints();
   }
 }
@@ -355,9 +356,9 @@ var parameters = {
 "id": "ggbApplet",
 "width":1000,
 "height":750,
-"showMenuBar":true,
+"showMenuBar":false,
 "showAlgebraInput":false,
-"showToolBar":true,
+"showToolBar":false,
 "showToolBarHelp":false,
 "showResetIcon":false,
 "enableLabelDrags":false,
@@ -372,11 +373,11 @@ var parameters = {
 
 var parameters2 = {
 "id": "ggbApplet2",
-"width":1000,
+"width":600,
 "height":750,
-"showMenuBar":true,
+"showMenuBar":false,
 "showAlgebraInput":false,
-"showToolBar":true,
+"showToolBar":false,
 "showToolBarHelp":false,
 "showResetIcon":false,
 "enableLabelDrags":false,
