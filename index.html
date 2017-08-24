@@ -125,6 +125,10 @@ function getMaxCoords(pointSuffix="") {
   return [maxX, maxY];
 }
 
+function roundToDecimal(num) {
+  return Math.round(num * 100) / 100;
+}
+
 function spreadSheetRowToGridObj(spreadsheetRow) {
   return String.fromCharCode(65 + (spreadsheetRow - 3));
 }
@@ -198,6 +202,7 @@ function makeMidpoints() {
 
   addListener(ggbApplet, "Y_MID", "dilateXListener");
   addListener(ggbApplet, "X_MID", "dilateYListener");
+  addListener(ggbApplet, "XY_MAX", "dilateXYListener");
 }
 
 function getDilationRules() {
@@ -306,6 +311,31 @@ function dilateYListener(objName) {
       dilation = Math.round(newY / baseY * 100) / 100;
 
   ggbApplet2.setTextValue("E2", dilation + "y");
+
+  pointNames.forEach(pointName => {
+    transformPoint(pointName);
+  });
+
+  makeMidpoints();
+
+  restartListeners();
+}
+
+function dilateXYListener(objName) {
+  pauseListeners();
+
+  console.log("Dilate XY listener: " + objName);
+  let oldDilations = getDilationRules(),
+      newCoords = getPointCoords(objName),
+      baseCoords = getMaxCoords(),
+      // We need to scale both dilations by the same amount to maintain aspect ratio
+      // Base the scaling amount on the change in the x direction for simplicity
+      newXDilation = newCoords[0] / baseCoords[0],
+      scaleFactor = newXDilation / oldDilations[0],
+      newDilations = [oldDilations[0] * scaleFactor, oldDilations[1] * scaleFactor];
+
+  ggbApplet2.setTextValue("D2", roundToDecimal(newDilations[0]) + "x");
+  ggbApplet2.setTextValue("E2", roundToDecimal(newDilations[1]) + "y");
 
   pointNames.forEach(pointName => {
     transformPoint(pointName);
