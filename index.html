@@ -18,9 +18,7 @@
  
 <script type="text/javascript"> 
 
-  var lockNames = ["sheetListener", "pointListener", "dilationListener", "sheetTransformationListener", "ruleListener"],
-      availableLocks = ["sheetListener", "pointListener", "dilationListener", "sheetTransformationListener", "ruleListener"],
-      objectsToListeners = {},
+  var objectsToListeners = {},
 
       app1Loaded = false,
       app2Loaded = false,
@@ -55,6 +53,9 @@ function addSheetListeners() {
 
   addListener(ggbApplet2, "D2", "ruleListener");
   addListener(ggbApplet2, "E2", "ruleListener");
+
+  addListener(ggbApplet2, "A6", "newPointListener");
+  addListener(ggbApplet2, "B6", "newPointListener");
 }
 
 function addListener(app, objName, functionName) {
@@ -64,30 +65,37 @@ function addListener(app, objName, functionName) {
   }
 }
 
-function removeAllListeners() {
+function removeListener(app, objName) {
+  app.unregisterObjectUpdateListener(objName);
+  delete objectsToListeners[objName];
+}
+
+function pauseListeners() {
   Object.keys(objectsToListeners).forEach(objName => {
     let app = objectsToListeners[objName].app;
     app.unregisterObjectUpdateListener(objName);
   });
 }
 
-function reAddAllListeners() {
+function restartListeners() {
   Object.keys(objectsToListeners).forEach(objName => {
     let app = objectsToListeners[objName].app,
         functionName = objectsToListeners[objName].functionName;
+    app.unregisterObjectUpdateListener(objName);
     app.registerObjectUpdateListener(objName, functionName);
   });
 }
 
-function lock(lockName) {
-  let lockIndex = availableLocks.indexOf(lockName);
-  if (lockIndex > -1) {
-    availableLocks.splice(lockIndex, 1);
-  }
-}
-
 function nextChar(c) {
   return String.fromCharCode(c.charCodeAt(0) + 1);
+}
+
+function getObjectNamesForRow(rowNum) {
+  return ["A" + rowNum, "B" + rowNum];
+}
+
+function getRowFromSheetObject(sheetObject) {
+  return parseInt(sheetObject.slice(1));
 }
 
 function gridObjToSpreadSheetRow(gridObj) {
@@ -231,7 +239,7 @@ function transformPoint(pointName) {
 }
 
 function pointListener(objName) {
-  removeAllListeners();
+  pauseListeners();
 
   console.log("Point listener: " + objName);
   let newCoords = getPointCoords(objName),
@@ -247,14 +255,14 @@ function pointListener(objName) {
 
   makeMidpoints();
 
-  reAddAllListeners();
+  restartListeners();
 }
 
 function sheetListener(objName) {
-  removeAllListeners();
+  pauseListeners();
   
   console.log("Sheet listener: " + objName);
-  let spreadsheetRow = parseInt(objName.slice(1)),
+  let spreadsheetRow = getRowFromSheetObject(objName),
       gridObj = spreadSheetRowToGridObj(spreadsheetRow),
       oldCoords = getPointCoords(gridObj),
       newCoords = getRowCoords(spreadsheetRow);
@@ -266,12 +274,12 @@ function sheetListener(objName) {
 
   makeMidpoints();
 
-  reAddAllListeners();
+  restartListeners();
 }
 
 // TODO: merge these into a single dilate listener
 function dilateXListener(objName) {
-  removeAllListeners();
+  pauseListeners();
 
   console.log("Dilate X listener: " + objName);
   let newX = ggbApplet.getXcoord(objName),
@@ -286,11 +294,11 @@ function dilateXListener(objName) {
 
   makeMidpoints();
 
-  reAddAllListeners();
+  restartListeners();
 }
 
 function dilateYListener(objName) {
-  removeAllListeners();
+  pauseListeners();
 
   console.log("Dilate Y listener: " + objName);
   let newY = ggbApplet.getYcoord(objName),
@@ -305,11 +313,11 @@ function dilateYListener(objName) {
 
   makeMidpoints();
 
-  reAddAllListeners();
+  restartListeners();
 }
 
 function ruleListener(objName) {
-  removeAllListeners();
+  pauseListeners();
 
   console.log("Rule listener: " + objName);
   pointNames.forEach(pointName => {
@@ -318,11 +326,43 @@ function ruleListener(objName) {
 
   makeMidpoints();
 
-  reAddAllListeners();
+  restartListeners();
+}
+
+function newPointListener(objName) {
+  pauseListeners();
+
+  let row = getRowFromSheetObject(objName),
+      rowCoords = getRowCoords(row);
+
+  if (!isNaN(rowCoords[0]) && !isNaN(rowCoords[1])) {
+    let rowObjects = getObjectNamesForRow(row),
+        newPoint = spreadSheetRowToGridObj(row),
+        nextRow = row + 1,
+        nextRowObjects = getObjectNamesForRow(nextRow);
+
+    // Transform and draw the new shape
+    transformPoint(newPoint);
+    makePolygonFromSpreadsheet("A", "B");
+    makePolygonFromSpreadsheet("D", "E", "'");
+    makeMidpoints();
+
+    // Update the listeners for the changed row
+    removeListener(ggbApplet2, rowObjects[0]);
+    removeListener(ggbApplet2, rowObjects[1]);
+    addListener(ggbApplet2, rowObjects[0], "sheetListener");
+    addListener(ggbApplet2, rowObjects[1], "sheetListener");
+
+    // Pass on the listeners to the next row
+    addListener(ggbApplet2, nextRowObjects[0], "newPointListener");
+    addListener(ggbApplet2, nextRowObjects[1], "newPointListener");
+  }
+
+  restartListeners();
 }
 
 function translateListener(objName) {
-  removeAllListeners();
+  pauseListeners();
 
   console.log("Translate listener: " + objName);
   let sampleRow = 3,
@@ -349,7 +389,7 @@ function translateListener(objName) {
 
   makeMidpoints();
 
-  reAddAllListeners();
+  restartListeners();
 }
 
 var parameters = {
