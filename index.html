@@ -3,6 +3,19 @@
 <html> 
 <head> 
 <title>GeoGebra and JavaScript</title> 
+<script src="https://www.gstatic.com/firebasejs/4.3.0/firebase.js"></script>
+<script>
+  // Initialize Firebase
+  var config = {
+    apiKey: "AIzaSyC6xLM2k-aYH62O9UeskD-C1OtFtkM58sw",
+    authDomain: "stretch-shrink.firebaseapp.com",
+    databaseURL: "https://stretch-shrink.firebaseio.com",
+    projectId: "stretch-shrink",
+    storageBucket: "stretch-shrink.appspot.com",
+    messagingSenderId: "616775738467"
+  };
+  firebase.initializeApp(config);
+</script>
 <script src="https://cdn.geogebra.org/apps/deployggb.js"></script>
 <link rel="stylesheet" type="text/css" href="style.css">
 </head> 
@@ -22,24 +35,31 @@
 
       app1Loaded = false,
       app2Loaded = false,
+      firstLoad = true,
 
       pointNames = [];
 
 function ggbOnInit(param) {
   if (param == "ggbApplet") {
-    app1Loaded = true;
+    loadGridXML();
   }
   if (param == "ggbApplet2") {
-    addSheetListeners();
-    app2Loaded = true;
+    loadSheetXML();
   }
+}
 
-  if (app1Loaded && app2Loaded) {
+function checkAppsLoaded() {
+  if (app1Loaded && app2Loaded && firstLoad) {
+    pauseListeners();
+
     makePolygonFromSpreadsheet("A", "B");
     makePolygonFromSpreadsheet("D", "E", "'");
     addListener(ggbApplet, "Poly'", "translateListener");
     ggbApplet.setColor("Poly'", 0, 0, 255);
     makeMidpoints();
+    firstLoad = false;
+
+    restartListeners();
   }
 }
 
@@ -58,9 +78,53 @@ function addSheetListeners() {
   addListener(ggbApplet2, "B6", "newPointListener");
 }
 
+// TODO: Combine the logic of these functions
+function loadGridXML() {
+  let db = firebase.database(),
+      sheetRef = db.ref("/classes/0/groups/0/ggbApplet");
+
+  sheetRef.on("value", function(snapshot) {
+    if (snapshot.val() && snapshot.val() !== ggbApplet.getXML()) {
+      ggbApplet.setXML(snapshot.val());
+      if (!firstLoad) {
+        // Setting the XML removes listeners, so they must be re-added
+        restartListeners();
+      }
+    }
+    app1Loaded = true;
+    checkAppsLoaded();
+  }, function (errorObject) {
+    console.log("The read failed: " + errorObject.code);
+    app1Loaded = true;
+    checkAppsLoaded();
+  });
+}
+
+function loadSheetXML() {
+  let db = firebase.database(),
+      sheetRef = db.ref("/classes/0/groups/0/ggbApplet2");
+
+  sheetRef.on("value", function(snapshot) {
+    if (snapshot.val() && snapshot.val() !== ggbApplet2.getXML()) {
+      ggbApplet2.setXML(snapshot.val());
+      if (!firstLoad) {
+        restartListeners();
+      }
+    }
+    addSheetListeners();
+    app2Loaded = true;
+    checkAppsLoaded();
+  }, function (errorObject) {
+    console.log("The read failed: " + errorObject.code);
+    addSheetListeners();
+    app2Loaded = true;
+    checkAppsLoaded();
+  });
+}
+
+// Create, but don't start, a new listener
 function addListener(app, objName, functionName) {
   if (objectsToListeners[objName] === undefined) {
-    app.registerObjectUpdateListener(objName, functionName);
     objectsToListeners[objName] = {app, functionName};
   }
 }
@@ -103,6 +167,46 @@ function gridObjToSpreadSheetRow(gridObj) {
       objNumDelta = objNum - 65;
 
   return objNumDelta + 3;
+}
+
+function saveState() {
+  saveGridXML();
+  saveSheetXML();
+}
+
+function saveGridXML() {
+  let database = firebase.database(),
+      ref = database.ref("/classes/0/groups/0"),
+      update = {
+        ggbApplet: ggbApplet.getXML()
+      };
+
+  ref.update(update);
+}
+
+function saveSheetXML() {
+  let baseXML = ggbApplet2.getXML(),
+      parser = new DOMParser(),
+      xmlDoc = parser.parseFromString(baseXML,"text/xml"),
+      elems = Array.prototype.slice.call(xmlDoc.getElementsByTagName("element"), 0);
+
+  // Remove empty cells or they load with question marks
+  elems.forEach(elem => {
+    let value = elem.getElementsByTagName("value")[0];
+    if (value) {
+      if (isNaN(parseInt(value.getAttribute("val")))) {
+        elem.parentElement.removeChild(elem);
+      }
+    }
+  });
+
+  let database = firebase.database(),
+      ref = database.ref("/classes/0/groups/0"),
+      update = {
+        ggbApplet2: new XMLSerializer().serializeToString(xmlDoc)
+      };
+
+  ref.update(update);
 }
 
 // Retrieves max coords from the graph
@@ -259,6 +363,7 @@ function pointListener(objName) {
   transformPoint(objName);
 
   makeMidpoints();
+  saveState();
 
   restartListeners();
 }
@@ -278,6 +383,7 @@ function sheetListener(objName) {
   transformPoint(gridObj);
 
   makeMidpoints();
+  saveState();
 
   restartListeners();
 }
@@ -298,6 +404,7 @@ function dilateXListener(objName) {
   });
 
   makeMidpoints();
+  saveState();
 
   restartListeners();
 }
@@ -317,6 +424,7 @@ function dilateYListener(objName) {
   });
 
   makeMidpoints();
+  saveState();
 
   restartListeners();
 }
@@ -342,6 +450,7 @@ function dilateXYListener(objName) {
   });
 
   makeMidpoints();
+  saveState();
 
   restartListeners();
 }
@@ -355,6 +464,7 @@ function ruleListener(objName) {
   });
 
   makeMidpoints();
+  saveState();
 
   restartListeners();
 }
@@ -386,6 +496,8 @@ function newPointListener(objName) {
     // Pass on the listeners to the next row
     addListener(ggbApplet2, nextRowObjects[0], "newPointListener");
     addListener(ggbApplet2, nextRowObjects[1], "newPointListener");
+
+    saveState();
   }
 
   restartListeners();
@@ -418,6 +530,7 @@ function translateListener(objName) {
   });
 
   makeMidpoints();
+  saveState();
 
   restartListeners();
 }
