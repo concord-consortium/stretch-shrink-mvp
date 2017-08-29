@@ -31,13 +31,26 @@
  
 <script type="text/javascript"> 
 
-  var objectsToListeners = {},
+var objectsToListeners = {},
 
-      app1Loaded = false,
-      app2Loaded = false,
-      firstLoad = true,
+    app1Loaded = false,
+    app2Loaded = false,
+    firstLoad = true,
 
-      pointNames = [];
+    pointNames = [];
+
+var urlParams;
+(window.onpopstate = function () {
+    var match,
+        pl     = /\+/g,  // Regex for replacing addition symbol with a space
+        search = /([^&=]+)=?([^&]*)/g,
+        decode = function (s) { return decodeURIComponent(s.replace(pl, " ")); },
+        query  = window.location.search.substring(1);
+
+    urlParams = {};
+    while ((match = search.exec(query)))
+       urlParams[decode(match[1])] = decode(match[2]);
+})();
 
 function ggbOnInit(param) {
   if (param == "ggbApplet") {
@@ -81,7 +94,7 @@ function addSheetListeners() {
 // TODO: Combine the logic of these functions
 function loadGridXML() {
   let db = firebase.database(),
-      sheetRef = db.ref("/classes/0/groups/0/ggbApplet");
+      sheetRef = db.ref(getBaseUrl() + "/ggbApplet");
 
   sheetRef.on("value", function(snapshot) {
     if (snapshot.val() && snapshot.val() !== ggbApplet.getXML()) {
@@ -102,7 +115,7 @@ function loadGridXML() {
 
 function loadSheetXML() {
   let db = firebase.database(),
-      sheetRef = db.ref("/classes/0/groups/0/ggbApplet2");
+      sheetRef = db.ref(getBaseUrl() + "/ggbApplet2");
 
   sheetRef.on("value", function(snapshot) {
     if (snapshot.val() && snapshot.val() !== ggbApplet2.getXML()) {
@@ -145,7 +158,6 @@ function restartListeners() {
   Object.keys(objectsToListeners).forEach(objName => {
     let app = objectsToListeners[objName].app,
         functionName = objectsToListeners[objName].functionName;
-    app.unregisterObjectUpdateListener(objName);
     app.registerObjectUpdateListener(objName, functionName);
   });
 }
@@ -176,7 +188,7 @@ function saveState() {
 
 function saveGridXML() {
   let database = firebase.database(),
-      ref = database.ref("/classes/0/groups/0"),
+      ref = database.ref(getBaseUrl()),
       update = {
         ggbApplet: ggbApplet.getXML()
       };
@@ -201,12 +213,22 @@ function saveSheetXML() {
   });
 
   let database = firebase.database(),
-      ref = database.ref("/classes/0/groups/0"),
+      ref = database.ref(getBaseUrl()),
       update = {
         ggbApplet2: new XMLSerializer().serializeToString(xmlDoc)
       };
 
   ref.update(update);
+}
+
+function getBaseUrl() {
+  let groupId = urlParams.groupId,
+      classId = urlParams.classId;
+
+  groupId = isNaN(groupId) ? "default" : groupId;
+  classId = isNaN(classId) ? "default" : classId;
+
+  return "/classes/" + classId + "/groups/" + groupId;
 }
 
 // Retrieves max coords from the graph
