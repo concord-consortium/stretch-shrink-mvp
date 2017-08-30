@@ -89,18 +89,8 @@ function addSheetListeners() {
     addListener("D6", plotListener);
     addListener("E6", plotListener);
   } else {
-    addListener("A3", sheetListener);
-    addListener("B3", sheetListener);
-    addListener("A4", sheetListener);
-    addListener("B4", sheetListener);
-    addListener("A5", sheetListener);
-    addListener("B5", sheetListener);
-
     addListener("D2", ruleListener);
     addListener("E2", ruleListener);
-
-    addListener("A6", newPointListener);
-    addListener("B6", newPointListener);
   }
 }
 
@@ -170,6 +160,14 @@ function restartListeners() {
 function mainListener(objName) {
   if (objectsToListeners[objName]) {
     objectsToListeners[objName](objName);
+  }
+
+  // Default listener for modifying main shape
+  // TODO: allow for rule-based listeners
+  if (objName.length > 1 
+      && (objName.startsWith("A") || objName.startsWith("B")) 
+      && !isNaN(parseInt(objName.charAt(1)))) {
+    sheetListener(objName);
   }
 }
 
@@ -417,26 +415,6 @@ function pointListener(objName) {
   restartListeners();
 }
 
-function sheetListener(objName) {
-  pauseListeners();
-  
-  console.log("Sheet listener: " + objName);
-  let spreadsheetRow = getRowFromSheetObject(objName),
-      gridObj = spreadSheetRowToGridObj(spreadsheetRow),
-      oldCoords = getPointCoords(gridObj),
-      newCoords = getRowCoords(spreadsheetRow);
-
-  // Update point coords on graph
-  ggbApplet.setCoords(gridObj, newCoords[0], newCoords[1]);
-
-  transformPoint(gridObj);
-
-  makeMidpoints();
-  saveState();
-
-  restartListeners();
-}
-
 // TODO: merge these into a single dilate listener
 function dilateXListener(objName) {
   pauseListeners();
@@ -518,33 +496,22 @@ function ruleListener(objName) {
   restartListeners();
 }
 
-function newPointListener(objName) {
+function sheetListener(objName) {
   pauseListeners();
 
+  console.log("Sheet listener: " + objName);
   let row = getRowFromSheetObject(objName),
       rowCoords = getRowCoords(row);
 
   if (!isNaN(rowCoords[0]) && !isNaN(rowCoords[1])) {
     let rowObjects = getObjectNamesForRow(row),
-        newPoint = spreadSheetRowToGridObj(row),
-        nextRow = row + 1,
-        nextRowObjects = getObjectNamesForRow(nextRow);
+        pointName = spreadSheetRowToGridObj(row);
 
     // Transform and draw the new shape
-    transformPoint(newPoint);
+    transformPoint(pointName);
     makePolygonFromSpreadsheet("A", "B");
     makePolygonFromSpreadsheet("D", "E", "'");
     makeMidpoints();
-
-    // Update the listeners for the changed row
-    removeListener(rowObjects[0]);
-    removeListener(rowObjects[1]);
-    addListener(rowObjects[0], sheetListener);
-    addListener(rowObjects[1], sheetListener);
-
-    // Pass on the listeners to the next row
-    addListener(nextRowObjects[0], newPointListener);
-    addListener(nextRowObjects[1], newPointListener);
 
     saveState();
   }
