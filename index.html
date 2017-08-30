@@ -67,7 +67,7 @@ function checkAppsLoaded() {
 
     makePolygonFromSpreadsheet("A", "B");
     makePolygonFromSpreadsheet("D", "E", "'");
-    addListener(ggbApplet, "Poly'", "translateListener");
+    addListener("Poly'", translateListener);
     ggbApplet.setColor("Poly'", 0, 0, 255);
     makeMidpoints();
     firstLoad = false;
@@ -77,18 +77,18 @@ function checkAppsLoaded() {
 }
 
 function addSheetListeners() {
-  addListener(ggbApplet2, "A3", "sheetListener");
-  addListener(ggbApplet2, "B3", "sheetListener");
-  addListener(ggbApplet2, "A4", "sheetListener");
-  addListener(ggbApplet2, "B4", "sheetListener");
-  addListener(ggbApplet2, "A5", "sheetListener");
-  addListener(ggbApplet2, "B5", "sheetListener");
+  addListener("A3", sheetListener);
+  addListener("B3", sheetListener);
+  addListener("A4", sheetListener);
+  addListener("B4", sheetListener);
+  addListener("A5", sheetListener);
+  addListener("B5", sheetListener);
 
-  addListener(ggbApplet2, "D2", "ruleListener");
-  addListener(ggbApplet2, "E2", "ruleListener");
+  addListener("D2", ruleListener);
+  addListener("E2", ruleListener);
 
-  addListener(ggbApplet2, "A6", "newPointListener");
-  addListener(ggbApplet2, "B6", "newPointListener");
+  addListener("A6", newPointListener);
+  addListener("B6", newPointListener);
 }
 
 // TODO: Combine the logic of these functions
@@ -135,31 +135,29 @@ function loadSheetXML() {
   });
 }
 
-// Create, but don't start, a new listener
-function addListener(app, objName, functionName) {
-  if (objectsToListeners[objName] === undefined) {
-    objectsToListeners[objName] = {app, functionName};
-  }
+function addListener(objName, func) {
+  objectsToListeners[objName] = func;
 }
 
-function removeListener(app, objName) {
-  app.unregisterObjectUpdateListener(objName);
-  delete objectsToListeners[objName];
+function removeListener(objName) {
+  objectsToListeners[objName] = null;
 }
 
 function pauseListeners() {
-  Object.keys(objectsToListeners).forEach(objName => {
-    let app = objectsToListeners[objName].app;
-    app.unregisterObjectUpdateListener(objName);
-  });
+  ggbApplet.unregisterUpdateListener("mainListener");
+  ggbApplet2.unregisterUpdateListener("mainListener");
 }
 
 function restartListeners() {
-  Object.keys(objectsToListeners).forEach(objName => {
-    let app = objectsToListeners[objName].app,
-        functionName = objectsToListeners[objName].functionName;
-    app.registerObjectUpdateListener(objName, functionName);
-  });
+  pauseListeners();
+  ggbApplet.registerUpdateListener("mainListener");
+  ggbApplet2.registerUpdateListener("mainListener");
+}
+
+function mainListener(objName) {
+  if (objectsToListeners[objName]) {
+    objectsToListeners[objName](objName);
+  }
 }
 
 function nextChar(c) {
@@ -292,7 +290,7 @@ function makePolygonFromSpreadsheet(xColumn, yColumn, pointSuffix = "") {
       ggbApplet.evalCommand(polyString);
 
       pointNames.forEach(pointName => {
-        addListener(ggbApplet, pointName, "pointListener");
+        addListener(pointName, pointListener);
       });
 
       break;
@@ -326,9 +324,9 @@ function makeMidpoints() {
   ggbApplet.setLineStyle("TOP_SEG", 1);
   ggbApplet.setLineStyle("RIGHT_SEG", 1);
 
-  addListener(ggbApplet, "Y_MID", "dilateXListener");
-  addListener(ggbApplet, "X_MID", "dilateYListener");
-  addListener(ggbApplet, "XY_MAX", "dilateXYListener");
+  addListener("Y_MID", dilateXListener);
+  addListener("X_MID", dilateYListener);
+  addListener("XY_MAX", dilateXYListener);
 }
 
 function getDilationRules() {
@@ -351,6 +349,10 @@ function getTranslationRules() {
   return [xMatch ? parseFloat(xMatch[1] + xMatch[2]) : 0, yMatch ? parseFloat(yMatch[1] + yMatch[2]) : 0];
 }
 
+function setCellValue(objName, value) {
+  ggbApplet2.evalCommand(objName + " = " + value);
+}
+
 // Transforms a point in the graph and corresponding row in spreadsheet. Bases transformation
 // off of base position and rules from the spreadsheet.
 function transformPoint(pointName) {
@@ -362,8 +364,8 @@ function transformPoint(pointName) {
       dilatedCoords = [baseCoords[0] * dilationRules[0], baseCoords[1] * dilationRules[1]],
       transformedCoords = [dilatedCoords[0] + translationRules[0], dilatedCoords[1] + translationRules[1]]
 
-  ggbApplet2.setValue("D" + spreadsheetRow, transformedCoords[0]);
-  ggbApplet2.setValue("E" + spreadsheetRow, transformedCoords[1]);
+  setCellValue("D" + spreadsheetRow, transformedCoords[0]);
+  setCellValue("E" + spreadsheetRow, transformedCoords[1]);
 
   // Update transformed points on graph
   ggbApplet.setCoords(pointName + "'", transformedCoords[0], transformedCoords[1]);
@@ -378,8 +380,8 @@ function pointListener(objName) {
       oldCoords = getRowCoords(spreadsheetRow);
 
   // Update point coords in spreadsheet
-  ggbApplet2.setValue("A" + spreadsheetRow, newCoords[0]);
-  ggbApplet2.setValue("B" + spreadsheetRow, newCoords[1]);
+  setCellValue("A" + spreadsheetRow, newCoords[0]);
+  setCellValue("B" + spreadsheetRow, newCoords[1]);
 
   // Update transformed point coords in spreadsheet
   transformPoint(objName);
@@ -510,14 +512,14 @@ function newPointListener(objName) {
     makeMidpoints();
 
     // Update the listeners for the changed row
-    removeListener(ggbApplet2, rowObjects[0]);
-    removeListener(ggbApplet2, rowObjects[1]);
-    addListener(ggbApplet2, rowObjects[0], "sheetListener");
-    addListener(ggbApplet2, rowObjects[1], "sheetListener");
+    removeListener(rowObjects[0]);
+    removeListener(rowObjects[1]);
+    addListener(rowObjects[0], sheetListener);
+    addListener(rowObjects[1], sheetListener);
 
     // Pass on the listeners to the next row
-    addListener(ggbApplet2, nextRowObjects[0], "newPointListener");
-    addListener(ggbApplet2, nextRowObjects[1], "newPointListener");
+    addListener(nextRowObjects[0], newPointListener);
+    addListener(nextRowObjects[1], newPointListener);
 
     saveState();
   }
