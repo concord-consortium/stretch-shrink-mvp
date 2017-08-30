@@ -67,7 +67,9 @@ function checkAppsLoaded() {
 
     makePolygonFromSpreadsheet("A", "B");
     makePolygonFromSpreadsheet("D", "E", "'");
-    addListener("Poly'", translateListener);
+    if (!urlParams.rulesOff) {
+      addListener("Poly'", translateListener);
+    }
     ggbApplet.setColor("Poly'", 0, 0, 255);
     makeMidpoints();
     firstLoad = false;
@@ -77,18 +79,29 @@ function checkAppsLoaded() {
 }
 
 function addSheetListeners() {
-  addListener("A3", sheetListener);
-  addListener("B3", sheetListener);
-  addListener("A4", sheetListener);
-  addListener("B4", sheetListener);
-  addListener("A5", sheetListener);
-  addListener("B5", sheetListener);
+  if (urlParams.rulesOff) {
+    addListener("D3", plotListener);
+    addListener("E3", plotListener);
+    addListener("D4", plotListener);
+    addListener("E4", plotListener);
+    addListener("D5", plotListener);
+    addListener("E5", plotListener);
+    addListener("D6", plotListener);
+    addListener("E6", plotListener);
+  } else {
+    addListener("A3", sheetListener);
+    addListener("B3", sheetListener);
+    addListener("A4", sheetListener);
+    addListener("B4", sheetListener);
+    addListener("A5", sheetListener);
+    addListener("B5", sheetListener);
 
-  addListener("D2", ruleListener);
-  addListener("E2", ruleListener);
+    addListener("D2", ruleListener);
+    addListener("E2", ruleListener);
 
-  addListener("A6", newPointListener);
-  addListener("B6", newPointListener);
+    addListener("A6", newPointListener);
+    addListener("B6", newPointListener);
+  }
 }
 
 // TODO: Combine the logic of these functions
@@ -569,6 +582,11 @@ function translateListener(objName) {
   saveState();
 
   restartListeners();
+}
+
+function plotListener(objName) {
+  makePolygonFromSpreadsheet("D", "E", "'");
+  ggbApplet.setColor("Poly'", 0, 0, 255);
 }
 
 var parameters = {
