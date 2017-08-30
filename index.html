@@ -179,6 +179,18 @@ function gridObjToSpreadSheetRow(gridObj) {
   return objNumDelta + 3;
 }
 
+function resetSave() {
+  let database = firebase.database(),
+      ref = database.ref(getBaseUrl()),
+      update = {
+        ggbApplet: null,
+        ggbApplet2: null
+      };
+
+  ref.update(update);
+  location.reload();
+}
+
 function saveState() {
   saveGridXML();
   saveSheetXML();
@@ -615,7 +627,8 @@ window.onload = function() {
 };
 
 </script> 
-     </div>
+</div>
+<button onclick="resetSave()">Reset to Default</button>
 </table> 
 </body> 
 </html> 
