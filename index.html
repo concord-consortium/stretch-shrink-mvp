@@ -624,7 +624,9 @@ function translateListener(objName) {
 }
 
 function plotListener(objName) {
+  pauseListeners();
   makePolygonsFromSpreadsheet();
+  restartListeners();
 }
 
 var parameters = {
