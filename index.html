@@ -183,6 +183,12 @@ function hexToRgb(hex) {
   } : null;
 }
 
+// Checks if a shape exists by checking if it has a valid pair of coordinates
+function doesShapeExist(xCol, yCol) {
+  let firstCoords = getRowCoords(3, xCol, yCol);
+  return (!isNaN(firstCoords[0]) && !isNaN(firstCoords[1]));
+}
+
 function getObjectNamesForRow(rowNum) {
   return ["A" + rowNum, "B" + rowNum];
 }
@@ -307,7 +313,7 @@ function makePolygonsFromSpreadsheet() {
       suffix = "";
 
   while (true) {
-    if (ggbApplet2.getValue(xCol + 3) && ggbApplet2.getValue(yCol + 3)) {
+    if (doesShapeExist(xCol, yCol)) {
       makePolygonFromSpreadsheet(xCol, yCol, suffix);
       xCol = nextChar(xCol, 3);
       yCol = nextChar(yCol, 3);
@@ -382,18 +388,18 @@ function makeMidpoints() {
   addListener("XY_MAX", dilateXYListener);
 }
 
-function getDilationRules() {
-  let xRule = ggbApplet2.getValueString("D2"),
-      yRule = ggbApplet2.getValueString("E2"),
+function getDilationRules(xCol, yCol) {
+  let xRule = ggbApplet2.getValueString(xCol + 2),
+      yRule = ggbApplet2.getValueString(yCol + 2),
       xDilation = parseFloat(xRule.slice(0, xRule.indexOf("x"))),
       yDilation = parseFloat(yRule.slice(0, yRule.indexOf("y")));
 
   return [isNaN(xDilation) ? 1 : xDilation, isNaN(yDilation) ? 1 : yDilation];
 }
 
-function getTranslationRules() {
-  let xRule = ggbApplet2.getValueString("D2"),
-      yRule = ggbApplet2.getValueString("E2"),
+function getTranslationRules(xCol, yCol) {
+  let xRule = ggbApplet2.getValueString(xCol + 2),
+      yRule = ggbApplet2.getValueString(yCol + 2),
       translationRegex = /(\-|\+)\s*(\d*\.{0,1}\d+)/,
       xMatch = translationRegex.exec(xRule),
       yMatch = translationRegex.exec(yRule);
@@ -409,19 +415,36 @@ function setCellValue(objName, value) {
 // Transforms a point in the graph and corresponding row in spreadsheet. Bases transformation
 // off of base position and rules from the spreadsheet.
 function transformPoint(pointName) {
+  let xCol = "D",
+      yCol = "E",
+      suffix = "'";
+
+  while (true) {
+    if (doesShapeExist(xCol, yCol)) {
+      transformPointForShape(pointName, xCol, yCol, suffix);
+      xCol = nextChar(xCol, 3);
+      yCol = nextChar(yCol, 3);
+      suffix += "'";
+    } else {
+      break;
+    }
+  }
+}
+
+function transformPointForShape(pointName, xCol, yCol, suffix) {
   // Update transformed point coords in spreadsheet
-  let dilationRules = getDilationRules(),
-      translationRules = getTranslationRules(),
+  let dilationRules = getDilationRules(xCol, yCol),
+      translationRules = getTranslationRules(xCol, yCol),
       spreadsheetRow = gridObjToSpreadSheetRow(pointName),
       baseCoords = getRowCoords(spreadsheetRow),
       dilatedCoords = [baseCoords[0] * dilationRules[0], baseCoords[1] * dilationRules[1]],
       transformedCoords = [dilatedCoords[0] + translationRules[0], dilatedCoords[1] + translationRules[1]]
 
-  setCellValue("D" + spreadsheetRow, transformedCoords[0]);
-  setCellValue("E" + spreadsheetRow, transformedCoords[1]);
+  setCellValue(xCol + spreadsheetRow, transformedCoords[0]);
+  setCellValue(yCol + spreadsheetRow, transformedCoords[1]);
 
   // Update transformed points on graph
-  ggbApplet.setCoords(pointName + "'", transformedCoords[0], transformedCoords[1]);
+  ggbApplet.setCoords(pointName + suffix, transformedCoords[0], transformedCoords[1]);
 }
 
 function pointListener(objName) {
@@ -490,7 +513,7 @@ function dilateXYListener(objName) {
   pauseListeners();
 
   console.log("Dilate XY listener: " + objName);
-  let oldDilations = getDilationRules(),
+  let oldDilations = getDilationRules("D", "E"),
       newCoords = getPointCoords(objName),
       baseCoords = getMaxCoords(),
       // We need to scale both dilations by the same amount to maintain aspect ratio
@@ -555,7 +578,7 @@ function translateListener(objName) {
   let sampleRow = 3,
       baseObj = spreadSheetRowToGridObj(sampleRow),
       baseCoords = getPointCoords(baseObj),
-      dilationRules = getDilationRules(),
+      dilationRules = getDilationRules("D", "E"),
       dilatedCoords = [baseCoords[0] * dilationRules[0], baseCoords[1] * dilationRules[1]],
 
       transformedObj = baseObj + "'",
