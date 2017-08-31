@@ -66,10 +66,6 @@ function checkAppsLoaded() {
     pauseListeners();
 
     makePolygonsFromSpreadsheet();
-    if (!urlParams.rulesOff) {
-      addListener("Poly'", translateListener);
-    }
-    ggbApplet.setColor("Poly'", 0, 0, 255);
     makeMidpoints();
     firstLoad = false;
 
@@ -88,8 +84,20 @@ function addSheetListeners() {
     addListener("D6", plotListener);
     addListener("E6", plotListener);
   } else {
-    addListener("D2", ruleListener);
-    addListener("E2", ruleListener);
+    let xCol = "D",
+        yCol = "E",
+        ruleRow = 2;
+
+    while (true) {
+      if (doesShapeExist(xCol, yCol)) {
+        addListener(xCol + ruleRow, ruleListener);
+        addListener(yCol + ruleRow, ruleListener);
+        xCol = nextChar(xCol, 3);
+        yCol = nextChar(yCol, 3);
+      } else {
+        break;
+      }
+    }
   }
 }
 
@@ -181,6 +189,12 @@ function hexToRgb(hex) {
       g: parseInt(result[2], 16),
       b: parseInt(result[3], 16)
   } : null;
+}
+
+function shapeNameToCols(shapeName) {
+  let suffixSize = (shapeName.match(/'/g) || []).length;
+
+  return [nextChar("A", suffixSize * 3), nextChar("B", suffixSize * 3)];
 }
 
 // Checks if a shape exists by checking if it has a valid pair of coordinates
@@ -351,6 +365,10 @@ function makePolygonFromSpreadsheet(xColumn, yColumn, pointSuffix = "") {
       let hexColor = ggbApplet2.getColor(xColumn + 1),
           rgbColor = hexToRgb(hexColor);
       ggbApplet.setColor(polyName, rgbColor.r, rgbColor.g, rgbColor.b);
+
+      if (!urlParams.rulesOff && pointSuffix.length > 0) {
+        addListener(polyName, translateListener);
+      }
 
       break;
     }
@@ -575,21 +593,23 @@ function translateListener(objName) {
   pauseListeners();
 
   console.log("Translate listener: " + objName);
+  // Pick a representative point from the transformed shape to find translation rules
   let sampleRow = 3,
       baseObj = spreadSheetRowToGridObj(sampleRow),
       baseCoords = getPointCoords(baseObj),
-      dilationRules = getDilationRules("D", "E"),
+      cols = shapeNameToCols(objName),
+      dilationRules = getDilationRules(cols[0], cols[1]),
       dilatedCoords = [baseCoords[0] * dilationRules[0], baseCoords[1] * dilationRules[1]],
 
-      transformedObj = baseObj + "'",
+      transformedObj = baseObj + objName.slice(objName.indexOf("'")),
       transformedCoords = getPointCoords(transformedObj),
       newTranslationRules = [Math.round((transformedCoords[0] - dilatedCoords[0]) * 100) / 100, 
                              Math.round((transformedCoords[1] - dilatedCoords[1]) * 100) / 100];
 
-  ggbApplet2.setTextValue("D2", newTranslationRules[0] >= 0 
+  ggbApplet2.setTextValue(cols[0] + 2, newTranslationRules[0] >= 0 
                                   ? dilationRules[0] + "x + " + newTranslationRules[0]
                                   : dilationRules[0] + "x - " + Math.abs(newTranslationRules[0]));
-  ggbApplet2.setTextValue("E2", newTranslationRules[1] >= 0 
+  ggbApplet2.setTextValue(cols[1] + 2, newTranslationRules[1] >= 0 
                                   ? dilationRules[1] + "y + " + newTranslationRules[1]
                                   : dilationRules[1] + "y - " + Math.abs(newTranslationRules[1]));
 
