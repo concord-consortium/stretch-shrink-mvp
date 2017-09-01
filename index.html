@@ -75,25 +75,18 @@ function checkAppsLoaded() {
 
 function addSheetListeners() {
   if (urlParams.rulesOff) {
-    addListener("D3", plotListener);
-    addListener("E3", plotListener);
-    addListener("D4", plotListener);
-    addListener("E4", plotListener);
-    addListener("D5", plotListener);
-    addListener("E5", plotListener);
-    addListener("D6", plotListener);
-    addListener("E6", plotListener);
+    addListener("C3", plotListener);
+    addListener("C4", plotListener);
+    addListener("C5", plotListener);
+    addListener("C6", plotListener);
   } else {
-    let xCol = "D",
-        yCol = "E",
+    let col = "C",
         ruleRow = 2;
 
     while (true) {
-      if (doesShapeExist(xCol, yCol)) {
-        addListener(xCol + ruleRow, ruleListener);
-        addListener(yCol + ruleRow, ruleListener);
-        xCol = nextChar(xCol, 3);
-        yCol = nextChar(yCol, 3);
+      if (doesShapeExist(col)) {
+        addListener(col + ruleRow, ruleListener);
+        col = nextChar(col);
       } else {
         break;
       }
@@ -172,7 +165,7 @@ function mainListener(objName) {
   // Default listener for modifying main shape
   // TODO: allow for rule-based listeners
   if (objName.length > 1 
-      && (objName.startsWith("A") || objName.startsWith("B")) 
+      && (objName.startsWith("B")) 
       && !isNaN(parseInt(objName.charAt(1)))) {
     sheetListener(objName);
   }
@@ -191,20 +184,16 @@ function hexToRgb(hex) {
   } : null;
 }
 
-function shapeNameToCols(shapeName) {
+function shapeNameToCol(shapeName) {
   let suffixSize = (shapeName.match(/'/g) || []).length;
 
-  return [nextChar("A", suffixSize * 3), nextChar("B", suffixSize * 3)];
+  return nextChar("B", suffixSize);
 }
 
 // Checks if a shape exists by checking if it has a valid pair of coordinates
-function doesShapeExist(xCol, yCol) {
-  let firstCoords = getRowCoords(3, xCol, yCol);
+function doesShapeExist(col) {
+  let firstCoords = getRowCoords(3, col);
   return (!isNaN(firstCoords[0]) && !isNaN(firstCoords[1]));
-}
-
-function getObjectNamesForRow(rowNum) {
-  return ["A" + rowNum, "B" + rowNum];
 }
 
 function getRowFromSheetObject(sheetObject) {
@@ -313,24 +302,24 @@ function getPointCoords(pointName, pointSuffix="") {
   return [ggbApplet.getXcoord(fullPointName), ggbApplet.getYcoord(fullPointName)];
 }
 
-function getRowCoords(rowNum, xCol = "A", yCol = "B") {
-  return [ggbApplet2.getValue(xCol + rowNum), ggbApplet2.getValue(yCol + rowNum)];
-}
+function getRowCoords(rowNum, col="B") {
+  let coordRegex = /(\-?\d*\.?\d+),\s*(\-?\d*\.?\d+)/g,
+      point = ggbApplet2.getValueString(col + rowNum),
+      matches = coordRegex.exec(point) || [null, null],
+      xCoord = matches[1],
+      yCoord = matches[2];
 
-function arePointsDifferent(point1, point2) {
-  return (Math.abs(point1[0] - point2[0]) > 0.01 || Math.abs(point1[1] - point2[1]) > 0.01)
+  return [xCoord, yCoord];
 }
 
 function makePolygonsFromSpreadsheet() {
-  let xCol = "A",
-      yCol = "B",
+  let col = "B",
       suffix = "";
 
   while (true) {
-    if (doesShapeExist(xCol, yCol)) {
-      makePolygonFromSpreadsheet(xCol, yCol, suffix);
-      xCol = nextChar(xCol, 3);
-      yCol = nextChar(yCol, 3);
+    if (doesShapeExist(col)) {
+      makePolygonFromSpreadsheet(col, suffix);
+      col = nextChar(col);
       suffix += "'";
     } else {
       break;
@@ -338,15 +327,16 @@ function makePolygonsFromSpreadsheet() {
   }
 }
 
-function makePolygonFromSpreadsheet(xColumn, yColumn, pointSuffix = "") {
+function makePolygonFromSpreadsheet(col, pointSuffix = "") {
   let coords = [],
       row = 3,
       pointName = "A",
       polyName = "Poly" + pointSuffix,
       polyString = polyName + " = Polygon(";
   while (true) {
-    let xCoord = ggbApplet2.getValue(xColumn + row),
-        yCoord = ggbApplet2.getValue(yColumn + row);
+    let coords = getRowCoords(row, col)
+        xCoord = coords[0],
+        yCoord = coords[1]
 
     if (!isNaN(xCoord) && !isNaN(yCoord)) {
       ggbApplet.evalCommand(pointName + pointSuffix + " = (" + xCoord + ", " + yCoord + ")");
@@ -362,7 +352,7 @@ function makePolygonFromSpreadsheet(xColumn, yColumn, pointSuffix = "") {
         addListener(pointName, pointListener);
       });
 
-      let hexColor = ggbApplet2.getColor(xColumn + 1),
+      let hexColor = ggbApplet2.getColor(col + 1),
           rgbColor = hexToRgb(hexColor);
       ggbApplet.setColor(polyName, rgbColor.r, rgbColor.g, rgbColor.b);
 
@@ -406,42 +396,45 @@ function makeMidpoints() {
   addListener("XY_MAX", dilateXYListener);
 }
 
-function getDilationRules(xCol, yCol) {
-  let xRule = ggbApplet2.getValueString(xCol + 2),
-      yRule = ggbApplet2.getValueString(yCol + 2),
-      xDilation = parseFloat(xRule.slice(0, xRule.indexOf("x"))),
-      yDilation = parseFloat(yRule.slice(0, yRule.indexOf("y")));
+function getDilationRules(col) {
+  let rulePair = ggbApplet2.getValueString(col + 2),
+      xRegex = /(\-?\d*\.?\d+)x/g,
+      yRegex = /(\-?\d*\.?\d+)y/g,
+      xMatch = xRegex.exec(rulePair),
+      yMatch = yRegex.exec(rulePair),
+      xDilation = xMatch ? parseFloat(xMatch[1]) : 1,
+      yDilation = yMatch ? parseFloat(yMatch[1]) : 1;
 
-  return [isNaN(xDilation) ? 1 : xDilation, isNaN(yDilation) ? 1 : yDilation];
+  return [xDilation, yDilation];
 }
 
-function getTranslationRules(xCol, yCol) {
-  let xRule = ggbApplet2.getValueString(xCol + 2),
-      yRule = ggbApplet2.getValueString(yCol + 2),
-      translationRegex = /(\-|\+)\s*(\d*\.{0,1}\d+)/,
-      xMatch = translationRegex.exec(xRule),
-      yMatch = translationRegex.exec(yRule);
+function getTranslationRules(col) {
+  let rulePair = ggbApplet2.getValueString(col + 2),
+      xRegex = /x\s*(\-|\+)\s*(\d*\.?\d+)/g,
+      yRegex = /y\s*(\-|\+)\s*(\d*\.?\d+)/g,
+      xMatch = xRegex.exec(rulePair),
+      yMatch = yRegex.exec(rulePair),
+      // Grab the parsed sign and number for translation rule
+      xTranslation = xMatch ? parseFloat(xMatch[1] + xMatch[2]) : 0,
+      yTranslation = yMatch ? parseFloat(yMatch[1] + yMatch[2]) : 0;
 
-  // Grab sign and number for translation rule
-  return [xMatch ? parseFloat(xMatch[1] + xMatch[2]) : 0, yMatch ? parseFloat(yMatch[1] + yMatch[2]) : 0];
+  return [xTranslation, yTranslation];
 }
 
-function setCellValue(objName, value) {
-  ggbApplet2.evalCommand(objName + " = " + value);
+function setCellCoordinateValue(objName, xCoord, yCoord) {
+  ggbApplet2.evalCommand(objName + " = (" + xCoord + ", " + yCoord + ")");
 }
 
 // Transforms a point in the graph and corresponding row in spreadsheet. Bases transformation
 // off of base position and rules from the spreadsheet.
 function transformPoint(pointName) {
-  let xCol = "D",
-      yCol = "E",
+  let col = "C",
       suffix = "'";
 
   while (true) {
-    if (doesShapeExist(xCol, yCol)) {
-      transformPointForShape(pointName, xCol, yCol, suffix);
-      xCol = nextChar(xCol, 3);
-      yCol = nextChar(yCol, 3);
+    if (doesShapeExist(col)) {
+      transformPointForShape(pointName, col, suffix);
+      col = nextChar(col);
       suffix += "'";
     } else {
       break;
@@ -449,17 +442,16 @@ function transformPoint(pointName) {
   }
 }
 
-function transformPointForShape(pointName, xCol, yCol, suffix) {
+function transformPointForShape(pointName, col, suffix) {
   // Update transformed point coords in spreadsheet
-  let dilationRules = getDilationRules(xCol, yCol),
-      translationRules = getTranslationRules(xCol, yCol),
+  let dilationRules = getDilationRules(col),
+      translationRules = getTranslationRules(col),
       spreadsheetRow = gridObjToSpreadSheetRow(pointName),
       baseCoords = getRowCoords(spreadsheetRow),
       dilatedCoords = [baseCoords[0] * dilationRules[0], baseCoords[1] * dilationRules[1]],
       transformedCoords = [dilatedCoords[0] + translationRules[0], dilatedCoords[1] + translationRules[1]]
 
-  setCellValue(xCol + spreadsheetRow, transformedCoords[0]);
-  setCellValue(yCol + spreadsheetRow, transformedCoords[1]);
+  setCellCoordinateValue(col + spreadsheetRow, transformedCoords[0], transformedCoords[1]);
 
   // Update transformed points on graph
   ggbApplet.setCoords(pointName + suffix, transformedCoords[0], transformedCoords[1]);
@@ -474,8 +466,7 @@ function pointListener(objName) {
       oldCoords = getRowCoords(spreadsheetRow);
 
   // Update point coords in spreadsheet
-  setCellValue("A" + spreadsheetRow, newCoords[0]);
-  setCellValue("B" + spreadsheetRow, newCoords[1]);
+  setCellCoordinateValue("B" + spreadsheetRow, newCoords[0], newCoords[1]);
 
   // Update transformed point coords in spreadsheet
   transformPoint(objName);
@@ -493,9 +484,10 @@ function dilateXListener(objName) {
   console.log("Dilate X listener: " + objName);
   let newX = ggbApplet.getXcoord(objName),
       baseX = getMaxCoords()[0],
-      dilation = Math.round(newX / baseX * 100) / 100;
+      newXDilation = Math.round(newX / baseX * 100) / 100,
+      yDilation = getDilationRules("C")[1];
 
-  ggbApplet2.setTextValue("D2", dilation + "x");
+  ggbApplet2.setTextValue("C2", "(" + newXDilation + "x, " + yDilation + "y)");
 
   pointNames.forEach(pointName => {
     transformPoint(pointName);
@@ -513,9 +505,10 @@ function dilateYListener(objName) {
   console.log("Dilate Y listener: " + objName);
   let newY = ggbApplet.getYcoord(objName),
       baseY = getMaxCoords()[1],
-      dilation = Math.round(newY / baseY * 100) / 100;
+      newYDilation = Math.round(newY / baseY * 100) / 100,
+      xDilation = getDilationRules("C")[0];
 
-  ggbApplet2.setTextValue("E2", dilation + "y");
+  ggbApplet2.setTextValue("C2", "(" + xDilation + "x, " + newYDilation + "y)");
 
   pointNames.forEach(pointName => {
     transformPoint(pointName);
@@ -531,7 +524,7 @@ function dilateXYListener(objName) {
   pauseListeners();
 
   console.log("Dilate XY listener: " + objName);
-  let oldDilations = getDilationRules("D", "E"),
+  let oldDilations = getDilationRules("C"),
       newCoords = getPointCoords(objName),
       baseCoords = getMaxCoords(),
       // We need to scale both dilations by the same amount to maintain aspect ratio
@@ -540,8 +533,7 @@ function dilateXYListener(objName) {
       scaleFactor = newXDilation / oldDilations[0],
       newDilations = [oldDilations[0] * scaleFactor, oldDilations[1] * scaleFactor];
 
-  ggbApplet2.setTextValue("D2", roundToDecimal(newDilations[0]) + "x");
-  ggbApplet2.setTextValue("E2", roundToDecimal(newDilations[1]) + "y");
+  ggbApplet2.setTextValue("C2", "(" + roundToDecimal(newDilations[0]) + "x, " + roundToDecimal(newDilations[1]) + "y)");
 
   pointNames.forEach(pointName => {
     transformPoint(pointName);
@@ -575,8 +567,7 @@ function sheetListener(objName) {
       rowCoords = getRowCoords(row);
 
   if (!isNaN(rowCoords[0]) && !isNaN(rowCoords[1])) {
-    let rowObjects = getObjectNamesForRow(row),
-        pointName = spreadSheetRowToGridObj(row);
+    let pointName = spreadSheetRowToGridObj(row);
 
     // Transform and draw the new shape
     transformPoint(pointName);
@@ -597,21 +588,23 @@ function translateListener(objName) {
   let sampleRow = 3,
       baseObj = spreadSheetRowToGridObj(sampleRow),
       baseCoords = getPointCoords(baseObj),
-      cols = shapeNameToCols(objName),
-      dilationRules = getDilationRules(cols[0], cols[1]),
+      col = shapeNameToCol(objName),
+      dilationRules = getDilationRules(col),
       dilatedCoords = [baseCoords[0] * dilationRules[0], baseCoords[1] * dilationRules[1]],
 
       transformedObj = baseObj + objName.slice(objName.indexOf("'")),
       transformedCoords = getPointCoords(transformedObj),
       newTranslationRules = [Math.round((transformedCoords[0] - dilatedCoords[0]) * 100) / 100, 
-                             Math.round((transformedCoords[1] - dilatedCoords[1]) * 100) / 100];
+                             Math.round((transformedCoords[1] - dilatedCoords[1]) * 100) / 100],
 
-  ggbApplet2.setTextValue(cols[0] + 2, newTranslationRules[0] >= 0 
-                                  ? dilationRules[0] + "x + " + newTranslationRules[0]
-                                  : dilationRules[0] + "x - " + Math.abs(newTranslationRules[0]));
-  ggbApplet2.setTextValue(cols[1] + 2, newTranslationRules[1] >= 0 
-                                  ? dilationRules[1] + "y + " + newTranslationRules[1]
-                                  : dilationRules[1] + "y - " + Math.abs(newTranslationRules[1]));
+      xTransform = newTranslationRules[0] >= 0 
+                    ? dilationRules[0] + "x + " + newTranslationRules[0]
+                    : dilationRules[0] + "x - " + Math.abs(newTranslationRules[0]),
+      yTransform = newTranslationRules[1] >= 0 
+                    ? dilationRules[1] + "y + " + newTranslationRules[1]
+                    : dilationRules[1] + "y - " + Math.abs(newTranslationRules[1]);
+
+  ggbApplet2.setTextValue(col + 2, "(" + xTransform + ", " + yTransform + ")");
 
   pointNames.forEach(pointName => {
     transformPoint(pointName);
@@ -664,7 +657,7 @@ var parameters2 = {
 "useBrowserForJS":true,
 "preventFocus":false,
 "language":"en",
-"material_id": urlParams.sheetId ? urlParams.sheetId : "uKg8Y9WS",
+"material_id": urlParams.sheetId ? urlParams.sheetId : "j63fSPAa",
 };
 
 // is3D=is 3D applet using 3D view, AV=Algebra View, SV=Spreadsheet View, CV=CAS View, EV2=Graphics View 2, CP=Construction Protocol, PC=Probability Calculator, DA=Data Analysis, FI=Function Inspector, PV=Python, macro=Macro View
