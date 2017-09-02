@@ -312,6 +312,42 @@ function getRowCoords(rowNum, col="B") {
   return [xCoord, yCoord];
 }
 
+function makeButtons() {
+  let col = "C",
+      suffix = "'",
+      buttonsDiv = document.getElementById("visiblity-buttons");
+
+  buttonsDiv.innerHTML = "";
+  while (true) {
+    if (doesShapeExist(col)) {
+      let shapeName = ggbApplet2.getValueString(col + 1),
+          shapeColor = ggbApplet2.getColor(col + 1),
+          button = document.createElement("button");
+
+      button.onclick = (function(suffix) {return function() {
+        pauseListeners();
+        let gridShapeName = "Poly" + suffix,
+            visibility = ggbApplet.getVisible(gridShapeName);
+
+        ggbApplet.setVisible(gridShapeName, !visibility);
+        pointNames.forEach(name => {
+          ggbApplet.setVisible(name + suffix, !visibility);
+        });
+        restartListeners();
+      }}(suffix));
+
+      button.innerText = "Toggle " + shapeName + " visibility";
+      button.style.color = shapeColor;
+      let buttonsDiv = document.getElementById("visiblity-buttons");
+      buttonsDiv.appendChild(button);
+      col = nextChar(col);
+      suffix += "'";
+    } else {
+      break;
+    }
+  }
+}
+
 function makePolygonsFromSpreadsheet() {
   let col = "B",
       suffix = "";
@@ -325,6 +361,7 @@ function makePolygonsFromSpreadsheet() {
       break;
     }
   }
+  makeButtons();
 }
 
 function makePolygonFromSpreadsheet(col, pointSuffix = "") {
@@ -344,6 +381,7 @@ function makePolygonFromSpreadsheet(col, pointSuffix = "") {
       if (pointNames.indexOf(pointName) === -1) {
         pointNames.push(pointName);
       }
+      ggbApplet.setLabelVisible(pointName + pointSuffix, true);
     } else {
       polyString = polyString.slice(0, polyString.length - 2) + ")";
       ggbApplet.evalCommand(polyString);
@@ -679,7 +717,10 @@ window.onload = function() {
 
 </script> 
 </div>
-<button onclick="resetSave()">Reset to Default</button>
+<div id="buttons">
+  <button onclick="resetSave()">Reset to Default</button>
+  <div id="visiblity-buttons"></div>
+</div>
 </table> 
 </body> 
 </html> 
