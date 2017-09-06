@@ -73,27 +73,6 @@ function checkAppsLoaded() {
   }
 }
 
-function addSheetListeners() {
-  if (urlParams.rulesOff) {
-    addListener("C3", plotListener);
-    addListener("C4", plotListener);
-    addListener("C5", plotListener);
-    addListener("C6", plotListener);
-  } else {
-    let col = "C",
-        ruleRow = 2;
-
-    while (true) {
-      if (doesShapeExist(col)) {
-        addListener(col + ruleRow, ruleListener);
-        col = nextChar(col);
-      } else {
-        break;
-      }
-    }
-  }
-}
-
 // TODO: Combine the logic of these functions
 function loadGridXML() {
   let db = firebase.database(),
@@ -127,12 +106,10 @@ function loadSheetXML() {
         restartListeners();
       }
     }
-    addSheetListeners();
     app2Loaded = true;
     checkAppsLoaded();
   }, function (errorObject) {
     console.log("The read failed: " + errorObject.code);
-    addSheetListeners();
     app2Loaded = true;
     checkAppsLoaded();
   });
@@ -147,27 +124,36 @@ function removeListener(objName) {
 }
 
 function pauseListeners() {
-  ggbApplet.unregisterUpdateListener("mainListener");
-  ggbApplet2.unregisterUpdateListener("mainListener");
+  ggbApplet.unregisterUpdateListener("gridListener");
+  ggbApplet2.unregisterUpdateListener("sheetListener");
 }
 
 function restartListeners() {
   pauseListeners();
-  ggbApplet.registerUpdateListener("mainListener");
-  ggbApplet2.registerUpdateListener("mainListener");
+  ggbApplet.registerUpdateListener("gridListener");
+  ggbApplet2.registerUpdateListener("sheetListener");
 }
 
-function mainListener(objName) {
+function sheetListener(objName) {
+  if (urlParams.rulesOff) {
+    if (objName.startsWith("C")) {
+      plotListener(objName);
+    }
+  } else {
+    let rowNum = getRowFromSheetObject(objName);
+    if (rowNum == 1) {
+      makeButtons();
+    } else if (rowNum === 2) {
+      ruleListener(objName);
+    } else if (rowNum >= 3) {
+      rowListener(objName);
+    }
+  }
+}
+
+function gridListener(objName) {
   if (objectsToListeners[objName]) {
     objectsToListeners[objName](objName);
-  }
-
-  // Default listener for modifying main shape
-  // TODO: allow for rule-based listeners
-  if (objName.length > 1 
-      && (objName.startsWith("B")) 
-      && !isNaN(parseInt(objName.charAt(1)))) {
-    sheetListener(objName);
   }
 }
 
@@ -190,10 +176,9 @@ function shapeNameToCol(shapeName) {
   return nextChar("B", suffixSize);
 }
 
-// Checks if a shape exists by checking if it has a valid pair of coordinates
+// Checks if a shape exists by checking if it has a rule
 function doesShapeExist(col) {
-  let firstCoords = getRowCoords(3, col);
-  return (!isNaN(firstCoords[0]) && !isNaN(firstCoords[1]));
+  return ggbApplet2.getValueString(col + 2) !== "";
 }
 
 function getRowFromSheetObject(sheetObject) {
@@ -597,12 +582,12 @@ function ruleListener(objName) {
   restartListeners();
 }
 
-function sheetListener(objName) {
+function rowListener(objName) {
   pauseListeners();
 
-  console.log("Sheet listener: " + objName);
+  console.log("Row listener: " + objName);
   let row = getRowFromSheetObject(objName),
-      rowCoords = getRowCoords(row);
+      rowCoords = getRowCoords(row, "B");
 
   if (!isNaN(rowCoords[0]) && !isNaN(rowCoords[1])) {
     let pointName = spreadSheetRowToGridObj(row);
