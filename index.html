@@ -204,6 +204,30 @@ function resetSave() {
   location.reload();
 }
 
+function toggleBaseComparison() {
+  pauseListeners();
+
+  if (!ggbApplet.getVisible("PolyCopy")) {
+    let copyPolyCommand = "PolyCopy = Polygon("
+    for (let i = 0; i < pointNames.length - 1; i++) {
+      let coords = getPointCoords(pointNames[i]);
+      copyPolyCommand += "(" + coords[0] + ", " + coords[1] + "), ";
+    }
+
+    let lastCoords = getPointCoords(pointNames[pointNames.length - 1]);
+    copyPolyCommand += "(" + lastCoords[0] + ", " + lastCoords[1] + "))";
+
+    ggbApplet.evalCommand(copyPolyCommand);
+    let color = hexToRgb(ggbApplet.getColor("Poly"));
+    ggbApplet.setColor("PolyCopy", color.r, color.g, color.b);
+    ggbApplet.setVisible("PolyCopy", true);
+  } else {
+    ggbApplet.setVisible("PolyCopy", false);
+  }
+
+  restartListeners();
+}
+
 function saveState() {
   saveGridXML();
   saveSheetXML();
@@ -704,6 +728,7 @@ window.onload = function() {
 </div>
 <div id="buttons">
   <button onclick="resetSave()">Reset to Default</button>
+  <button onclick="toggleBaseComparison()" style="color: red">Toggle Comparison Mug</button>
   <div id="visiblity-buttons"></div>
 </div>
 </table> 
