@@ -126,12 +126,14 @@ function removeListener(objName) {
 function pauseListeners() {
   ggbApplet.unregisterUpdateListener("gridListener");
   ggbApplet2.unregisterUpdateListener("sheetListener");
+  ggbApplet2.unregisterAddListener("sheetListener");
 }
 
 function restartListeners() {
   pauseListeners();
   ggbApplet.registerUpdateListener("gridListener");
   ggbApplet2.registerUpdateListener("sheetListener");
+  ggbApplet2.registerAddListener("sheetListener");
 }
 
 function sheetListener(objName) {
@@ -619,6 +621,7 @@ function rowListener(objName) {
 
     // Transform and draw the new shape
     transformPoint(pointName);
+    ggbApplet2.setTextValue("A" + row, pointName);
     makePolygonsFromSpreadsheet();
     makeMidpoints();
 
