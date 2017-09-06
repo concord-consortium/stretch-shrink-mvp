@@ -470,6 +470,7 @@ function getTranslationRules(col) {
 
 function setCellCoordinateValue(objName, xCoord, yCoord) {
   ggbApplet2.evalCommand(objName + " = (" + xCoord + ", " + yCoord + ")");
+  ggbApplet2.setColor(objName, 0, 0, 0);
 }
 
 // Transforms a point in the graph and corresponding row in spreadsheet. Bases transformation
