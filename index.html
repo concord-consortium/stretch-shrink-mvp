@@ -16,6 +16,7 @@
   };
   firebase.initializeApp(config);
 </script>
+<script src="utils.js"></script>
 <script src="https://cdn.geogebra.org/apps/deployggb.js"></script>
 <link rel="stylesheet" type="text/css" href="style.css">
 </head> 
@@ -24,9 +25,9 @@
  
 <div id="appContainer"> 
 
-<div id="ggbApplet2"></div>
+<div id="sheetApp"></div>
 
-<div id="ggbApplet"></div>
+<div id="gridApp"></div>
 
  
 <script type="text/javascript"> 
@@ -39,24 +40,11 @@ var objectsToListeners = {},
 
     pointNames = [];
 
-var urlParams;
-(window.onpopstate = function () {
-    var match,
-        pl     = /\+/g,  // Regex for replacing addition symbol with a space
-        search = /([^&=]+)=?([^&]*)/g,
-        decode = function (s) { return decodeURIComponent(s.replace(pl, " ")); },
-        query  = window.location.search.substring(1);
-
-    urlParams = {};
-    while ((match = search.exec(query)))
-       urlParams[decode(match[1])] = decode(match[2]);
-})();
-
 function ggbOnInit(param) {
-  if (param == "ggbApplet") {
+  if (param == "gridApp") {
     loadGridXML();
   }
-  if (param == "ggbApplet2") {
+  if (param == "sheetApp") {
     loadSheetXML();
   }
 }
@@ -76,11 +64,11 @@ function checkAppsLoaded() {
 // TODO: Combine the logic of these functions
 function loadGridXML() {
   let db = firebase.database(),
-      sheetRef = db.ref(getBaseUrl() + "/ggbApplet");
+      sheetRef = db.ref(getBaseUrl() + "/gridApp");
 
   sheetRef.on("value", function(snapshot) {
-    if (snapshot.val() && snapshot.val() !== ggbApplet.getXML()) {
-      ggbApplet.setXML(snapshot.val());
+    if (snapshot.val() && snapshot.val() !== gridApp.getXML()) {
+      gridApp.setXML(snapshot.val());
       if (!firstLoad) {
         // Setting the XML removes listeners, so they must be re-added
         restartListeners();
@@ -97,11 +85,11 @@ function loadGridXML() {
 
 function loadSheetXML() {
   let db = firebase.database(),
-      sheetRef = db.ref(getBaseUrl() + "/ggbApplet2");
+      sheetRef = db.ref(getBaseUrl() + "/sheetApp");
 
   sheetRef.on("value", function(snapshot) {
-    if (snapshot.val() && snapshot.val() !== ggbApplet2.getXML()) {
-      ggbApplet2.setXML(snapshot.val());
+    if (snapshot.val() && snapshot.val() !== sheetApp.getXML()) {
+      sheetApp.setXML(snapshot.val());
       if (!firstLoad) {
         restartListeners();
       }
@@ -124,16 +112,16 @@ function removeListener(objName) {
 }
 
 function pauseListeners() {
-  ggbApplet.unregisterUpdateListener("gridListener");
-  ggbApplet2.unregisterUpdateListener("sheetListener");
-  ggbApplet2.unregisterAddListener("sheetListener");
+  gridApp.unregisterUpdateListener("gridListener");
+  sheetApp.unregisterUpdateListener("sheetListener");
+  sheetApp.unregisterAddListener("sheetListener");
 }
 
 function restartListeners() {
   pauseListeners();
-  ggbApplet.registerUpdateListener("gridListener");
-  ggbApplet2.registerUpdateListener("sheetListener");
-  ggbApplet2.registerAddListener("sheetListener");
+  gridApp.registerUpdateListener("gridListener");
+  sheetApp.registerUpdateListener("sheetListener");
+  sheetApp.registerAddListener("sheetListener");
 }
 
 function sheetListener(objName) {
@@ -159,47 +147,17 @@ function gridListener(objName) {
   }
 }
 
-function nextChar(c, incAmount = 1) {
-  return String.fromCharCode(c.charCodeAt(0) + incAmount);
-}
-
-function hexToRgb(hex) {
-  var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result ? {
-      r: parseInt(result[1], 16),
-      g: parseInt(result[2], 16),
-      b: parseInt(result[3], 16)
-  } : null;
-}
-
-function shapeNameToCol(shapeName) {
-  let suffixSize = (shapeName.match(/'/g) || []).length;
-
-  return nextChar("B", suffixSize);
-}
-
 // Checks if a shape exists by checking if it has a rule
 function doesShapeExist(col) {
-  return ggbApplet2.getValueString(col + 2) !== "";
-}
-
-function getRowFromSheetObject(sheetObject) {
-  return parseInt(sheetObject.slice(1));
-}
-
-function gridObjToSpreadSheetRow(gridObj) {
-  let objNum = gridObj.charCodeAt(0),
-      objNumDelta = objNum - 65;
-
-  return objNumDelta + 3;
+  return sheetApp.getValueString(col + 2) !== "";
 }
 
 function resetSave() {
   let database = firebase.database(),
       ref = database.ref(getBaseUrl()),
       update = {
-        ggbApplet: null,
-        ggbApplet2: null
+        gridApp: null,
+        sheetApp: null
       };
 
   ref.update(update);
@@ -209,7 +167,7 @@ function resetSave() {
 function toggleBaseComparison() {
   pauseListeners();
 
-  if (!ggbApplet.getVisible("PolyCopy")) {
+  if (!gridApp.getVisible("PolyCopy")) {
     let copyPolyCommand = "PolyCopy = Polygon("
     for (let i = 0; i < pointNames.length - 1; i++) {
       let coords = getPointCoords(pointNames[i]);
@@ -219,12 +177,12 @@ function toggleBaseComparison() {
     let lastCoords = getPointCoords(pointNames[pointNames.length - 1]);
     copyPolyCommand += "(" + lastCoords[0] + ", " + lastCoords[1] + "))";
 
-    ggbApplet.evalCommand(copyPolyCommand);
-    let color = hexToRgb(ggbApplet.getColor("Poly"));
-    ggbApplet.setColor("PolyCopy", color.r, color.g, color.b);
-    ggbApplet.setVisible("PolyCopy", true);
+    gridApp.evalCommand(copyPolyCommand);
+    let color = hexToRgb(gridApp.getColor("Poly"));
+    gridApp.setColor("PolyCopy", color.r, color.g, color.b);
+    gridApp.setVisible("PolyCopy", true);
   } else {
-    ggbApplet.setVisible("PolyCopy", false);
+    gridApp.setVisible("PolyCopy", false);
   }
 
   restartListeners();
@@ -239,14 +197,14 @@ function saveGridXML() {
   let database = firebase.database(),
       ref = database.ref(getBaseUrl()),
       update = {
-        ggbApplet: ggbApplet.getXML()
+        gridApp: gridApp.getXML()
       };
 
   ref.update(update);
 }
 
 function saveSheetXML() {
-  let baseXML = ggbApplet2.getXML(),
+  let baseXML = sheetApp.getXML(),
       parser = new DOMParser(),
       xmlDoc = parser.parseFromString(baseXML,"text/xml"),
       elems = Array.prototype.slice.call(xmlDoc.getElementsByTagName("element"), 0);
@@ -264,7 +222,7 @@ function saveSheetXML() {
   let database = firebase.database(),
       ref = database.ref(getBaseUrl()),
       update = {
-        ggbApplet2: new XMLSerializer().serializeToString(xmlDoc)
+        sheetApp: new XMLSerializer().serializeToString(xmlDoc)
       };
 
   ref.update(update);
@@ -286,8 +244,8 @@ function getMaxCoords(pointSuffix="") {
       maxY = 0;
   pointNames.forEach(basePointName => {
     let pointName = basePointName + pointSuffix,
-        x = ggbApplet.getXcoord(pointName),
-        y = ggbApplet.getYcoord(pointName);
+        x = gridApp.getXcoord(pointName),
+        y = gridApp.getYcoord(pointName);
 
     if (x > maxX) {
       maxX = x;
@@ -300,22 +258,14 @@ function getMaxCoords(pointSuffix="") {
   return [maxX, maxY];
 }
 
-function roundToDecimal(num) {
-  return Math.round(num * 100) / 100;
-}
-
-function spreadSheetRowToGridObj(spreadsheetRow) {
-  return String.fromCharCode(65 + (spreadsheetRow - 3));
-}
-
 function getPointCoords(pointName, pointSuffix="") {
   let fullPointName = pointName + pointSuffix;
-  return [ggbApplet.getXcoord(fullPointName), ggbApplet.getYcoord(fullPointName)];
+  return [gridApp.getXcoord(fullPointName), gridApp.getYcoord(fullPointName)];
 }
 
 function getRowCoords(rowNum, col="B") {
   let coordRegex = /(\-?\d*\.?\d+),\s*(\-?\d*\.?\d+)/g,
-      point = ggbApplet2.getValueString(col + rowNum),
+      point = sheetApp.getValueString(col + rowNum),
       matches = coordRegex.exec(point) || [null, null],
       xCoord = matches[1],
       yCoord = matches[2];
@@ -331,18 +281,18 @@ function makeButtons() {
   buttonsDiv.innerHTML = "";
   while (true) {
     if (doesShapeExist(col)) {
-      let shapeName = ggbApplet2.getValueString(col + 1),
-          shapeColor = ggbApplet2.getColor(col + 1),
+      let shapeName = sheetApp.getValueString(col + 1),
+          shapeColor = sheetApp.getColor(col + 1),
           button = document.createElement("button");
 
       button.onclick = (function(suffix) {return function() {
         pauseListeners();
         let gridShapeName = "Poly" + suffix,
-            visibility = ggbApplet.getVisible(gridShapeName);
+            visibility = gridApp.getVisible(gridShapeName);
 
-        ggbApplet.setVisible(gridShapeName, !visibility);
+        gridApp.setVisible(gridShapeName, !visibility);
         pointNames.forEach(name => {
-          ggbApplet.setVisible(name + suffix, !visibility);
+          gridApp.setVisible(name + suffix, !visibility);
         });
         restartListeners();
       }}(suffix));
@@ -387,23 +337,23 @@ function makePolygonFromSpreadsheet(col, pointSuffix = "") {
         yCoord = coords[1]
 
     if (!isNaN(xCoord) && !isNaN(yCoord)) {
-      ggbApplet.evalCommand(pointName + pointSuffix + " = (" + xCoord + ", " + yCoord + ")");
+      gridApp.evalCommand(pointName + pointSuffix + " = (" + xCoord + ", " + yCoord + ")");
       polyString += pointName + pointSuffix + ", ";
       if (pointNames.indexOf(pointName) === -1) {
         pointNames.push(pointName);
       }
-      ggbApplet.setLabelVisible(pointName + pointSuffix, true);
+      gridApp.setLabelVisible(pointName + pointSuffix, true);
     } else {
       polyString = polyString.slice(0, polyString.length - 2) + ")";
-      ggbApplet.evalCommand(polyString);
+      gridApp.evalCommand(polyString);
 
       pointNames.forEach(pointName => {
         addListener(pointName, pointListener);
       });
 
-      let hexColor = ggbApplet2.getColor(col + 1),
+      let hexColor = sheetApp.getColor(col + 1),
           rgbColor = hexToRgb(hexColor);
-      ggbApplet.setColor(polyName, rgbColor.r, rgbColor.g, rgbColor.b);
+      gridApp.setColor(polyName, rgbColor.r, rgbColor.g, rgbColor.b);
 
       if (!urlParams.rulesOff && pointSuffix.length > 0) {
         addListener(polyName, translateListener);
@@ -423,22 +373,22 @@ function makeMidpoints() {
       maxX = maxCoords[0],
       maxY = maxCoords[1];
 
-  ggbApplet.evalCommand("X_MID = (" + maxX/2 + ", " + maxY + ")");
-  ggbApplet.evalCommand("X_ZERO = (" + 0 + ", " + maxY + ")");
-  ggbApplet.evalCommand("Y_MID = (" + maxX + ", " + maxY/2 + ")");
-  ggbApplet.evalCommand("Y_ZERO = (" + maxX + ", " + 0 + ")");
-  ggbApplet.evalCommand("XY_MAX = (" + maxX + ", " + maxY + ")");
+  gridApp.evalCommand("X_MID = (" + maxX/2 + ", " + maxY + ")");
+  gridApp.evalCommand("X_ZERO = (" + 0 + ", " + maxY + ")");
+  gridApp.evalCommand("Y_MID = (" + maxX + ", " + maxY/2 + ")");
+  gridApp.evalCommand("Y_ZERO = (" + maxX + ", " + 0 + ")");
+  gridApp.evalCommand("XY_MAX = (" + maxX + ", " + maxY + ")");
 
-  ggbApplet.setColor("X_MID", 255, 0, 0);
-  ggbApplet.setColor("Y_MID", 255, 0, 0);
-  ggbApplet.setColor("XY_MAX", 255, 0, 0);
-  ggbApplet.setVisible("X_ZERO", false);
-  ggbApplet.setVisible("Y_ZERO", false);
+  gridApp.setColor("X_MID", 255, 0, 0);
+  gridApp.setColor("Y_MID", 255, 0, 0);
+  gridApp.setColor("XY_MAX", 255, 0, 0);
+  gridApp.setVisible("X_ZERO", false);
+  gridApp.setVisible("Y_ZERO", false);
 
-  ggbApplet.evalCommand("TOP_SEG = Segment(X_ZERO, XY_MAX)");
-  ggbApplet.evalCommand("RIGHT_SEG = Segment(Y_ZERO, XY_MAX)");
-  ggbApplet.setLineStyle("TOP_SEG", 1);
-  ggbApplet.setLineStyle("RIGHT_SEG", 1);
+  gridApp.evalCommand("TOP_SEG = Segment(X_ZERO, XY_MAX)");
+  gridApp.evalCommand("RIGHT_SEG = Segment(Y_ZERO, XY_MAX)");
+  gridApp.setLineStyle("TOP_SEG", 1);
+  gridApp.setLineStyle("RIGHT_SEG", 1);
 
   addListener("Y_MID", dilateXListener);
   addListener("X_MID", dilateYListener);
@@ -446,7 +396,7 @@ function makeMidpoints() {
 }
 
 function getDilationRules(col) {
-  let rulePair = ggbApplet2.getValueString(col + 2),
+  let rulePair = sheetApp.getValueString(col + 2),
       xRegex = /(\-?\d*\.?\d+)x/g,
       yRegex = /(\-?\d*\.?\d+)y/g,
       xMatch = xRegex.exec(rulePair),
@@ -458,7 +408,7 @@ function getDilationRules(col) {
 }
 
 function getTranslationRules(col) {
-  let rulePair = ggbApplet2.getValueString(col + 2),
+  let rulePair = sheetApp.getValueString(col + 2),
       xRegex = /x\s*(\-|\+)\s*(\d*\.?\d+)/g,
       yRegex = /y\s*(\-|\+)\s*(\d*\.?\d+)/g,
       xMatch = xRegex.exec(rulePair),
@@ -471,8 +421,8 @@ function getTranslationRules(col) {
 }
 
 function setCellCoordinateValue(objName, xCoord, yCoord) {
-  ggbApplet2.evalCommand(objName + " = (" + xCoord + ", " + yCoord + ")");
-  ggbApplet2.setColor(objName, 0, 0, 0);
+  sheetApp.evalCommand(objName + " = (" + xCoord + ", " + yCoord + ")");
+  sheetApp.setColor(objName, 0, 0, 0);
 }
 
 // Transforms a point in the graph and corresponding row in spreadsheet. Bases transformation
@@ -504,7 +454,7 @@ function transformPointForShape(pointName, col, suffix) {
   setCellCoordinateValue(col + spreadsheetRow, transformedCoords[0], transformedCoords[1]);
 
   // Update transformed points on graph
-  ggbApplet.setCoords(pointName + suffix, transformedCoords[0], transformedCoords[1]);
+  gridApp.setCoords(pointName + suffix, transformedCoords[0], transformedCoords[1]);
 }
 
 function pointListener(objName) {
@@ -532,12 +482,12 @@ function dilateXListener(objName) {
   pauseListeners();
 
   console.log("Dilate X listener: " + objName);
-  let newX = ggbApplet.getXcoord(objName),
+  let newX = gridApp.getXcoord(objName),
       baseX = getMaxCoords()[0],
       newXDilation = Math.round(newX / baseX * 100) / 100,
       yDilation = getDilationRules("C")[1];
 
-  ggbApplet2.setTextValue("C2", "(" + newXDilation + "x, " + yDilation + "y)");
+  sheetApp.setTextValue("C2", "(" + newXDilation + "x, " + yDilation + "y)");
 
   pointNames.forEach(pointName => {
     transformPoint(pointName);
@@ -553,12 +503,12 @@ function dilateYListener(objName) {
   pauseListeners();
 
   console.log("Dilate Y listener: " + objName);
-  let newY = ggbApplet.getYcoord(objName),
+  let newY = gridApp.getYcoord(objName),
       baseY = getMaxCoords()[1],
       newYDilation = Math.round(newY / baseY * 100) / 100,
       xDilation = getDilationRules("C")[0];
 
-  ggbApplet2.setTextValue("C2", "(" + xDilation + "x, " + newYDilation + "y)");
+  sheetApp.setTextValue("C2", "(" + xDilation + "x, " + newYDilation + "y)");
 
   pointNames.forEach(pointName => {
     transformPoint(pointName);
@@ -583,7 +533,7 @@ function dilateXYListener(objName) {
       scaleFactor = newXDilation / oldDilations[0],
       newDilations = [oldDilations[0] * scaleFactor, oldDilations[1] * scaleFactor];
 
-  ggbApplet2.setTextValue("C2", "(" + roundToDecimal(newDilations[0]) + "x, " + roundToDecimal(newDilations[1]) + "y)");
+  sheetApp.setTextValue("C2", "(" + roundToDecimal(newDilations[0]) + "x, " + roundToDecimal(newDilations[1]) + "y)");
 
   pointNames.forEach(pointName => {
     transformPoint(pointName);
@@ -621,7 +571,7 @@ function rowListener(objName) {
 
     // Transform and draw the new shape
     transformPoint(pointName);
-    ggbApplet2.setTextValue("A" + row, pointName);
+    sheetApp.setTextValue("A" + row, pointName);
     makePolygonsFromSpreadsheet();
     makeMidpoints();
 
@@ -655,7 +605,7 @@ function translateListener(objName) {
                     ? dilationRules[1] + "y + " + newTranslationRules[1]
                     : dilationRules[1] + "y - " + Math.abs(newTranslationRules[1]);
 
-  ggbApplet2.setTextValue(col + 2, "(" + xTransform + ", " + yTransform + ")");
+  sheetApp.setTextValue(col + 2, "(" + xTransform + ", " + yTransform + ")");
 
   pointNames.forEach(pointName => {
     transformPoint(pointName);
@@ -674,7 +624,7 @@ function plotListener(objName) {
 }
 
 var parameters = {
-"id": "ggbApplet",
+"id": "gridApp",
 "width":900,
 "height":750,
 "showMenuBar":false,
@@ -693,7 +643,7 @@ var parameters = {
 
 
 var parameters2 = {
-"id": "ggbApplet2",
+"id": "sheetApp",
 "width":700,
 "height":750,
 "showMenuBar":false,
@@ -715,17 +665,11 @@ var parameters2 = {
 var views = {'is3D': 0,'AV': 1,'SV': 1,'CV': 0,'EV2': 0,'CP': 0,'PC': 0,'DA': 0,'FI': 0,'PV': 0,'macro': 0};
 
 var applet = new GGBApplet(parameters, '5.0', views);
-              
-    //  when used with Math Apps Bundle, uncomment this:
-    //  applet.setHTML5Codebase('GeoGebra/HTML5/5.0/web/');
 var applet2 = new GGBApplet(parameters2, '5.0', views);
               
-    //  when used with Math Apps Bundle, uncomment this:
-    //  applet2.setHTML5Codebase('GeoGebra/HTML5/5.0/web/');
-
 window.onload = function() {
-  applet.inject('ggbApplet');
-  applet2.inject('ggbApplet2');
+  applet.inject('gridApp');
+  applet2.inject('sheetApp');
 };
 
 </script> 
