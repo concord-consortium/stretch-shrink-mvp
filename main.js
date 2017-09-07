@@ -81,6 +81,14 @@ function pauseListeners() {
   gridApp.unregisterUpdateListener("gridListener");
   sheetApp.unregisterUpdateListener("sheetListener");
   sheetApp.unregisterAddListener("sheetListener");
+
+  let undoButtons = document.querySelectorAll(".undoButton"),
+      redoButtons = document.querySelectorAll(".redoButton");
+
+  undoButtons[0].onclick = null;
+  redoButtons[0].onclick = null;
+  undoButtons[1].onclick = null;
+  redoButtons[1].onclick = null;
 }
 
 function restartListeners() {
@@ -88,6 +96,39 @@ function restartListeners() {
   gridApp.registerUpdateListener("gridListener");
   sheetApp.registerUpdateListener("sheetListener");
   sheetApp.registerAddListener("sheetListener");
+
+  let undoButtons = document.querySelectorAll(".undoButton"),
+      redoButtons = document.querySelectorAll(".redoButton");
+
+  undoButtons[0].onclick = sheetUndoRedoListener;
+  redoButtons[0].onclick = sheetUndoRedoListener;
+  undoButtons[1].onclick = gridUndoRedoListener;
+  redoButtons[1].onclick = gridUndoRedoListener;
+}
+
+function sheetUndoRedoListener() {
+  pauseListeners();
+
+  console.log("Undo/redo grid event");
+  // Assume every row changed
+  pointNames.forEach(pointName => {
+    let row = gridObjToSpreadSheetRow(pointName);
+    rowListener("B" + row);
+  });
+
+  restartListeners();
+}
+
+function gridUndoRedoListener() {
+  pauseListeners();
+
+  console.log("Undo/redo sheet event");
+  // Assume every point moved
+  pointNames.forEach(pointName => {
+    pointListener(pointName);
+  });
+
+  restartListeners();
 }
 
 function sheetListener(objName) {
