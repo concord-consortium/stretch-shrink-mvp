@@ -133,7 +133,7 @@ function gridUndoRedoListener() {
 
 function sheetListener(objName) {
   if (urlParams.rulesOff) {
-    if (objName.startsWith("C")) {
+    if (!objName.startsWith("B")) {
       plotListener(objName);
     }
   } else {
