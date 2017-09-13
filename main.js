@@ -673,8 +673,9 @@ var views = {'is3D': 0,'AV': 1,'SV': 1,'CV': 0,'EV2': 0,'CP': 0,'PC': 0,'DA': 0,
 
 var applet = new GGBApplet(parameters, '5.0', views);
 var applet2 = new GGBApplet(parameters2, '5.0', views);
-              
+
 window.onload = function() {
   applet.inject('gridApp');
   applet2.inject('sheetApp');
+  share(() => { return gridApp }, 'gridApp');
 };
