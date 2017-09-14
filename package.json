@@ -1,0 +1,31 @@
+{
+  "name": "stretch-shrink-mvp",
+  "version": "1.0.0",
+  "description": "MVP for \"Stretch and Shrink Geogebra activity for MSU CMP\" ",
+  "main": "index.js",
+  "repository": "git@github.com:concord-consortium/stretch-shrink-mvp.git",
+  "contributors": [
+    {
+      "email": "npaessel@concord.org",
+      "name": "Noah Paessel"
+    },
+    {
+      "email": "ekosminsky@concord.org",
+      "name": "Eli Kosminsky "
+    }
+  ],
+  "license": "MIT",
+  "scripts": {
+    "build": "webpack"
+  },
+  "dependencies": {
+    "cc-sharing": "^1.0.6",
+    "query-string": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/query-string": "^5.0.0",
+    "awesome-typescript-loader": "^3.2.3",
+    "copy-webpack-plugin": "^4.0.1",
+    "webpack": "^3.6.0"
+  }
+}

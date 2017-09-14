@@ -1,9 +1,11 @@
+const utils = require("./utils");
+const sharing = require("./sharing");
+
 var objectsToListeners = {},
 
     app1Loaded = false,
     app2Loaded = false,
     firstLoad = true,
-
     pointNames = [];
 
 function ggbOnInit(param) {
@@ -112,7 +114,7 @@ function sheetUndoRedoListener() {
   console.log("Undo/redo grid event");
   // Assume every row changed
   pointNames.forEach(pointName => {
-    let row = gridObjToSpreadSheetRow(pointName);
+    let row = utils.gridObjToSpreadSheetRow(pointName);
     rowListener("B" + row);
   });
 
@@ -132,12 +134,12 @@ function gridUndoRedoListener() {
 }
 
 function sheetListener(objName) {
-  if (urlParams.rulesOff) {
+  if (utils.urlParams.rulesOff) {
     if (!objName.startsWith("B")) {
       plotListener(objName);
     }
   } else {
-    let rowNum = getRowFromSheetObject(objName);
+    let rowNum = utils.getRowFromSheetObject(objName);
     if (rowNum == 1) {
       makeButtons();
     } else if (rowNum === 2) {
@@ -166,8 +168,13 @@ function resetSave() {
         gridApp: null,
         sheetApp: null
       };
-
   ref.update(update);
+  // gridApp.openMaterial(getGridId());
+  // sheetApp.openMaterial(getSheetId());
+  // loadGridXML();
+  // loadSheetXML();
+  // restartListeners();
+  // TODO: Try something like above. because reload complicates the library sharing post message …
   location.reload();
 }
 
@@ -185,7 +192,7 @@ function toggleBaseComparison() {
     copyPolyCommand += "(" + lastCoords[0] + ", " + lastCoords[1] + "))";
 
     gridApp.evalCommand(copyPolyCommand);
-    let color = hexToRgb(gridApp.getColor("Poly"));
+    let color = utils.hexToRgb(gridApp.getColor("Poly"));
     gridApp.setColor("PolyCopy", color.r, color.g, color.b);
     gridApp.setVisible("PolyCopy", true);
   } else {
@@ -236,11 +243,11 @@ function saveSheetXML() {
 }
 
 function getBaseUrl() {
-  let groupId = urlParams.groupId,
-      classId = urlParams.classId;
+  let groupId = utils.urlParams.groupId,
+      classId = utils.urlParams.classId;
 
-  groupId = isNaN(groupId) ? "default" : groupId;
-  classId = isNaN(classId) ? "default" : classId;
+  groupId = (groupId && groupId.length > 0) ? groupId : "default";
+  classId = (classId && classId.length > 0) ? classId : "default";
 
   return "/classes/" + classId + "/groups/" + groupId;
 }
@@ -308,7 +315,7 @@ function makeButtons() {
       button.style.color = shapeColor;
       let buttonsDiv = document.getElementById("visiblity-buttons");
       buttonsDiv.appendChild(button);
-      col = nextChar(col);
+      col = utils.nextChar(col);
       suffix += "'";
     } else {
       break;
@@ -323,7 +330,7 @@ function makePolygonsFromSpreadsheet() {
   while (true) {
     if (doesShapeExist(col)) {
       makePolygonFromSpreadsheet(col, suffix);
-      col = nextChar(col);
+      col = utils.nextChar(col);
       suffix += "'";
     } else {
       break;
@@ -359,10 +366,10 @@ function makePolygonFromSpreadsheet(col, pointSuffix = "") {
       });
 
       let hexColor = sheetApp.getColor(col + 1),
-          rgbColor = hexToRgb(hexColor);
+          rgbColor = utils.hexToRgb(hexColor);
       gridApp.setColor(polyName, rgbColor.r, rgbColor.g, rgbColor.b);
 
-      if (!urlParams.rulesOff && pointSuffix.length > 0) {
+      if (!utils.urlParams.rulesOff && pointSuffix.length > 0) {
         addListener(polyName, translateListener);
       }
 
@@ -370,7 +377,7 @@ function makePolygonFromSpreadsheet(col, pointSuffix = "") {
     }
 
     row++;
-    pointName = nextChar(pointName);
+    pointName = utils.nextChar(pointName);
   }
 }
 
@@ -441,7 +448,7 @@ function transformPoint(pointName) {
   while (true) {
     if (doesShapeExist(col)) {
       transformPointForShape(pointName, col, suffix);
-      col = nextChar(col);
+      col = utils.nextChar(col);
       suffix += "'";
     } else {
       break;
@@ -453,7 +460,7 @@ function transformPointForShape(pointName, col, suffix) {
   // Update transformed point coords in spreadsheet
   let dilationRules = getDilationRules(col),
       translationRules = getTranslationRules(col),
-      spreadsheetRow = gridObjToSpreadSheetRow(pointName),
+      spreadsheetRow = utils.gridObjToSpreadSheetRow(pointName),
       baseCoords = getRowCoords(spreadsheetRow),
       dilatedCoords = [baseCoords[0] * dilationRules[0], baseCoords[1] * dilationRules[1]],
       transformedCoords = [dilatedCoords[0] + translationRules[0], dilatedCoords[1] + translationRules[1]]
@@ -469,7 +476,7 @@ function pointListener(objName) {
 
   console.log("Point listener: " + objName);
   let newCoords = getPointCoords(objName),
-      spreadsheetRow = gridObjToSpreadSheetRow(objName),
+      spreadsheetRow = utils.gridObjToSpreadSheetRow(objName),
       oldCoords = getRowCoords(spreadsheetRow);
 
   // Update point coords in spreadsheet
@@ -540,7 +547,7 @@ function dilateXYListener(objName) {
       scaleFactor = newXDilation / oldDilations[0],
       newDilations = [oldDilations[0] * scaleFactor, oldDilations[1] * scaleFactor];
 
-  sheetApp.setTextValue("C2", "(" + roundToDecimal(newDilations[0]) + "x, " + roundToDecimal(newDilations[1]) + "y)");
+  sheetApp.setTextValue("C2", "(" + utils.roundToDecimal(newDilations[0]) + "x, " + utils.roundToDecimal(newDilations[1]) + "y)");
 
   pointNames.forEach(pointName => {
     transformPoint(pointName);
@@ -570,11 +577,11 @@ function rowListener(objName) {
   pauseListeners();
 
   console.log("Row listener: " + objName);
-  let row = getRowFromSheetObject(objName),
+  let row = utils.getRowFromSheetObject(objName),
       rowCoords = getRowCoords(row, "B");
 
   if (!isNaN(rowCoords[0]) && !isNaN(rowCoords[1])) {
-    let pointName = spreadSheetRowToGridObj(row);
+    let pointName = utils.spreadSheetRowToGridObj(row);
 
     // Transform and draw the new shape
     transformPoint(pointName);
@@ -594,9 +601,9 @@ function translateListener(objName) {
   console.log("Translate listener: " + objName);
   // Pick a representative point from the transformed shape to find translation rules
   let sampleRow = 3,
-      baseObj = spreadSheetRowToGridObj(sampleRow),
+      baseObj = utils.spreadSheetRowToGridObj(sampleRow),
       baseCoords = getPointCoords(baseObj),
-      col = shapeNameToCol(objName),
+      col = utils.shapeNameToCol(objName),
       dilationRules = getDilationRules(col),
       dilatedCoords = [baseCoords[0] * dilationRules[0], baseCoords[1] * dilationRules[1]],
 
@@ -630,42 +637,51 @@ function plotListener(objName) {
   restartListeners();
 }
 
+function getGridId() {
+  return utils.urlParams.gridId ? utils.urlParams.gridId : "c23xKskj";
+}
+
+function getSheetId() {
+  return utils.urlParams.sheetId ? utils.urlParams.sheetId : "sA38WgGZ";
+}
+
 var parameters = {
-"id": "gridApp",
-"width":900,
-"height":750,
-"showMenuBar":false,
-"showAlgebraInput":false,
-"showToolBar":true,
-"showToolBarHelp":false,
-"showResetIcon":false,
-"enableLabelDrags":false,
-"enableShiftDragZoom":true,
-"enableRightClick":true,
-"errorDialogsActive":false,
-"useBrowserForJS":true,
-"preventFocus":false,
-"language":"en",
-"material_id": urlParams.gridId ? urlParams.gridId : "c23xKskj"};
+  "id": "gridApp",
+  "width":900,
+  "height":750,
+  "showMenuBar":false,
+  "showAlgebraInput":false,
+  "showToolBar":true,
+  "showToolBarHelp":false,
+  "showResetIcon":false,
+  "enableLabelDrags":false,
+  "enableShiftDragZoom":true,
+  "enableRightClick":true,
+  "errorDialogsActive":false,
+  "useBrowserForJS":true,
+  "preventFocus":false,
+  "language":"en",
+  "material_id": getGridId()
+};
 
 
 var parameters2 = {
-"id": "sheetApp",
-"width":700,
-"height":750,
-"showMenuBar":false,
-"showAlgebraInput":false,
-"showToolBar":true,
-"showToolBarHelp":false,
-"showResetIcon":false,
-"enableLabelDrags":false,
-"enableShiftDragZoom":true,
-"enableRightClick":true,
-"errorDialogsActive":false,
-"useBrowserForJS":true,
-"preventFocus":false,
-"language":"en",
-"material_id": urlParams.sheetId ? urlParams.sheetId : "sA38WgGZ",
+  "id": "sheetApp",
+  "width":700,
+  "height":750,
+  "showMenuBar":false,
+  "showAlgebraInput":false,
+  "showToolBar":true,
+  "showToolBarHelp":false,
+  "showResetIcon":false,
+  "enableLabelDrags":false,
+  "enableShiftDragZoom":true,
+  "enableRightClick":true,
+  "errorDialogsActive":false,
+  "useBrowserForJS":true,
+  "preventFocus":false,
+  "language":"en",
+  "material_id": getSheetId()
 };
 
 // is3D=is 3D applet using 3D view, AV=Algebra View, SV=Spreadsheet View, CV=CAS View, EV2=Graphics View 2, CP=Construction Protocol, PC=Probability Calculator, DA=Data Analysis, FI=Function Inspector, PV=Python, macro=Macro View
@@ -677,5 +693,5 @@ var applet2 = new GGBApplet(parameters2, '5.0', views);
 window.onload = function() {
   applet.inject('gridApp');
   applet2.inject('sheetApp');
-  share(() => { return gridApp }, 'gridApp');
+  sharing.share(() => { return gridApp }, 'gridApp');
 };

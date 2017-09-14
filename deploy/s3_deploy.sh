@@ -3,15 +3,6 @@
 # this will deploy the current public folder to a subfolder in the s3 bucket
 # the subfolder is the name of the TRAVIS_BRANCH
 
-# TODO: Real build system later:
-if [ -d dist ]; then
-  rm -rf dist
-fi
-mkdir dist
-cp *.html ./dist/
-cp *.js ./dist/
-cp *.css ./dist/
-
 if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then
 	echo "skipping deploy to S3: this is a pull request"
 	exit 0

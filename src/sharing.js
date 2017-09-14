@@ -1,15 +1,9 @@
+import {SharingClient, SharingLib, Png} from 'cc-sharing';
+import { log } from "./utils";
 log("loading `sharing.js`");
-function log(msg) {
-  if(console && console.log) {
-    console.log(msg);
-  }
-};
 
-function share(getApplet, name) {
-  // <script src="sharing.js"></script>
+export function share(getApplet, name) {
   log(`✔ initiating sharing for ${name}`);
-  const SharingClient = window.SharingLib.SharingClient;
-  const Png = window.SharingLib.Png;
   const app = {
     application: {
       launchUrl: window.location.href,
@@ -19,7 +13,8 @@ function share(getApplet, name) {
       const _applet = getApplet();
       let filename = "thumbnails/untitled.png";
       if(context) {
-        filename = `thumbnails/${context.offering.id}/${context.group.id}/${context.user.id}/${context.localId}.png`;
+        filename = `thumbnails/${context.offering.id}/${context.group.id}/${context.clazz.id}/${context.localId}.png`;
+        log(context);
       }
       else {
         log("No context passed in 💀");
@@ -47,5 +42,4 @@ function share(getApplet, name) {
   const sharePhone = new SharingClient({app});
   log(`✔ sharing enabled for ${name}`);
 }
-window.share = share;
 log("✔ done loading sharing.js");
