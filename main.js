@@ -239,8 +239,8 @@ function getBaseUrl() {
   let groupId = urlParams.groupId,
       classId = urlParams.classId;
 
-  groupId = isNaN(groupId) ? "default" : groupId;
-  classId = isNaN(classId) ? "default" : classId;
+  groupId = (groupId && groupId.length > 0) ? groupId : "default";
+  classId = (groupId && groupId.length > 0) ? classId : "default";
 
   return "/classes/" + classId + "/groups/" + groupId;
 }
