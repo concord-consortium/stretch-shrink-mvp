@@ -344,14 +344,16 @@ function makePolygonsFromSpreadsheet() {
 
 function makePolygonFromSpreadsheet(col, pointSuffix = "") {
   let coords = [],
+      xCoord = null,
+      yCoord = null,
       row = 3,
       pointName = "A",
       polyName = "Poly" + pointSuffix,
       polyString = polyName + " = Polygon(";
   while (true) {
-    let coords = getRowCoords(row, col)
-        xCoord = coords[0],
-        yCoord = coords[1]
+    coords = getRowCoords(row, col);
+    xCoord = coords[0];
+    yCoord = coords[1]
 
     if (!isNaN(xCoord) && !isNaN(yCoord)) {
       gridApp.evalCommand(pointName + pointSuffix + " = (" + xCoord + ", " + yCoord + ")");
