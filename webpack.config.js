@@ -12,7 +12,9 @@ module.exports = {
 
   output: {
     path: path.resolve(__dirname, "dist"),
-    filename: "[name].js"
+    filename: "[name].js",
+    libraryTarget: "var",
+    library: "MugWump"
   },
   resolve: {
     extensions: [".webpack.js", ".web.js", ".ts", ".tsx", ".js"]

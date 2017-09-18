@@ -169,12 +169,7 @@ function resetSave() {
         sheetApp: null
       };
   ref.update(update);
-  // gridApp.openMaterial(getGridId());
-  // sheetApp.openMaterial(getSheetId());
-  // loadGridXML();
-  // loadSheetXML();
-  // restartListeners();
-  // TODO: Try something like above. because reload complicates the library sharing post message …
+  // TODO: Try something like above, because reload Complicates the library sharing post message …
   location.reload();
 }
 
@@ -692,8 +687,8 @@ var parameters2 = {
 // is3D=is 3D applet using 3D view, AV=Algebra View, SV=Spreadsheet View, CV=CAS View, EV2=Graphics View 2, CP=Construction Protocol, PC=Probability Calculator, DA=Data Analysis, FI=Function Inspector, PV=Python, macro=Macro View
 var views = {'is3D': 0,'AV': 1,'SV': 1,'CV': 0,'EV2': 0,'CP': 0,'PC': 0,'DA': 0,'FI': 0,'PV': 0,'macro': 0};
 
-var applet = new GGBApplet(parameters, '5.0', views);
-var applet2 = new GGBApplet(parameters2, '5.0', views);
+export var applet = new GGBApplet(parameters, '5.0', views);
+export var applet2 = new GGBApplet(parameters2, '5.0', views);
 
 window.onload = function() {
   applet.inject('gridApp');
