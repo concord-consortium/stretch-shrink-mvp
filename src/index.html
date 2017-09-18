@@ -17,19 +17,19 @@
       firebase.initializeApp(config);
     </script>
     <script src="https://cdn.geogebra.org/apps/deployggb.js"></script>
-    <script src="index.js"></script>
+    <script src="index.js" defer='true'></script>
     <link rel="stylesheet" type="text/css" href="style.css">
   </head>
-   
+
   <body> 
     <div id="appContainer"> 
       <div id="sheetApp"></div>
       <div id="gridApp"></div>
     </div>
     <div id="buttons">
-      <button onclick="resetSave()">Reset to Default</button>
-      <button onclick="toggleBaseComparison()" style="color: red">Toggle Comparison Mug</button>
+      <button id="reset">Reset to Default</button>
+      <button id="toggle-compare"  style="color: red">Toggle Comparison Mug</button>
       <div id="visiblity-buttons"></div>
     </div>
   </body> 
-</html> 
+</html>

@@ -8,7 +8,7 @@ var objectsToListeners = {},
     firstLoad = true,
     pointNames = [];
 
-function ggbOnInit(param) {
+window.ggbOnInit = function(param) {
   if (param == "gridApp") {
     loadGridXML();
   }
@@ -80,9 +80,9 @@ function removeListener(objName) {
 }
 
 function pauseListeners() {
-  gridApp.unregisterUpdateListener("gridListener");
-  sheetApp.unregisterUpdateListener("sheetListener");
-  sheetApp.unregisterAddListener("sheetListener");
+  gridApp.unregisterUpdateListener(gridListener);
+  sheetApp.unregisterUpdateListener(sheetListener);
+  sheetApp.unregisterAddListener(sheetListener);
 
   let undoButtons = document.querySelectorAll(".undoButton"),
       redoButtons = document.querySelectorAll(".redoButton");
@@ -95,9 +95,9 @@ function pauseListeners() {
 
 function restartListeners() {
   pauseListeners();
-  gridApp.registerUpdateListener("gridListener");
-  sheetApp.registerUpdateListener("sheetListener");
-  sheetApp.registerAddListener("sheetListener");
+  gridApp.registerUpdateListener(gridListener);
+  sheetApp.registerUpdateListener(sheetListener);
+  sheetApp.registerAddListener(sheetListener);
 
   let undoButtons = document.querySelectorAll(".undoButton"),
       redoButtons = document.querySelectorAll(".redoButton");
@@ -291,6 +291,9 @@ function makeButtons() {
   let col = "C",
       suffix = "'",
       buttonsDiv = document.getElementById("visiblity-buttons");
+
+  document.getElementById("reset").addEventListener("click", resetSave);
+  document.getElementById("toggle-compare").addEventListener("click", toggleBaseComparison);
 
   buttonsDiv.innerHTML = "";
   while (true) {
