@@ -1,14 +1,3 @@
-// Contains all URL parameters
-export const urlParams = {};
-(window.onpopstate = function () {
-    var match,
-        pl     = /\+/g,  // Regex for replacing addition symbol with a space
-        search = /([^&=]+)=?([^&]*)/g,
-        decode = function (s) { return decodeURIComponent(s.replace(pl, " ")); },
-        query  = window.location.search.substring(1);
-    while ((match = search.exec(query)))
-       urlParams[decode(match[1])] = decode(match[2]);
-})();
 
 // Given a character an an amount to advance, gives the character that many forward in the alphabet
 export function nextChar(c, incAmount = 1) {

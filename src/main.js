@@ -1,18 +1,24 @@
 const utils = require("./utils");
-const sharing = require("./sharing");
 
-var objectsToListeners = {},
+// import { Sharing } from "./sharing";
+// const Sharing = require("./sharing");
+import Sharing from "./sharing";
+import { getParam, addChangeListener, setParam }  from "./params";
 
+let objectsToListeners = {},
     app1Loaded = false,
     app2Loaded = false,
     firstLoad = true,
     pointNames = [];
 
-window.ggbOnInit = function(param) {
-  if (param == "gridApp") {
+let sheetFirebaseRef = null;
+let gridFirebaseRef  = null;
+
+window.ggbOnInit = function(appName) {
+  if (appName == "gridApp") {
     loadGridXML();
   }
-  if (param == "sheetApp") {
+  if (appName == "sheetApp") {
     loadSheetXML();
   }
 }
@@ -31,10 +37,15 @@ function checkAppsLoaded() {
 
 // TODO: Combine the logic of these functions
 function loadGridXML() {
-  let db = firebase.database(),
-      sheetRef = db.ref(getBaseUrl() + "/gridApp");
+  let db = firebase.database();
+  if(gridFirebaseRef) {
+    gridFirebaseRef.off();
+    gridFirebaseRef = null;
+    console.log(" ✔ removed grid listener");
+  }
+  gridFirebaseRef = db.ref(getBaseUrl() + "/gridApp");
 
-  sheetRef.on("value", function(snapshot) {
+  gridFirebaseRef.on("value", function(snapshot) {
     if (snapshot.val() && snapshot.val() !== gridApp.getXML()) {
       gridApp.setXML(snapshot.val());
       if (!firstLoad) {
@@ -44,18 +55,19 @@ function loadGridXML() {
     }
     app1Loaded = true;
     checkAppsLoaded();
-  }, function (errorObject) {
-    console.log("The read failed: " + errorObject.code);
-    app1Loaded = true;
-    checkAppsLoaded();
+    console.log(" ✔ new firebase grid data");
   });
 }
 
 function loadSheetXML() {
-  let db = firebase.database(),
-      sheetRef = db.ref(getBaseUrl() + "/sheetApp");
-
-  sheetRef.on("value", function(snapshot) {
+  let db = firebase.database();
+  if(sheetFirebaseRef) {
+    sheetFirebaseRef.off();
+    sheetFirebaseRef = null;
+    console.log(" ✔ removed sheet listener");
+  }
+  sheetFirebaseRef = db.ref(getBaseUrl() + "/sheetApp");
+  sheetFirebaseRef.on("value", function(snapshot) {
     if (snapshot.val() && snapshot.val() !== sheetApp.getXML()) {
       sheetApp.setXML(snapshot.val());
       if (!firstLoad) {
@@ -64,12 +76,16 @@ function loadSheetXML() {
     }
     app2Loaded = true;
     checkAppsLoaded();
-  }, function (errorObject) {
-    console.log("The read failed: " + errorObject.code);
-    app2Loaded = true;
-    checkAppsLoaded();
+    console.log(" ✔ new firebase sheet data");
   });
 }
+
+function resetFirebase() {
+  console.log(" ✔ reseting Firebase");
+  loadGridXML();
+  loadSheetXML();
+}
+
 
 function addListener(objName, func) {
   objectsToListeners[objName] = func;
@@ -134,7 +150,8 @@ function gridUndoRedoListener() {
 }
 
 function sheetListener(objName) {
-  if (utils.urlParams.rulesOff) {
+  const rulesOff = getParam("rulesOff");
+  if (rulesOff && rulesOff !== "false") {
     if (!objName.startsWith("B")) {
       plotListener(objName);
     }
@@ -169,7 +186,6 @@ function resetSave() {
         sheetApp: null
       };
   ref.update(update);
-  // TODO: Try something like above, because reload Complicates the library sharing post message …
   location.reload();
 }
 
@@ -238,8 +254,8 @@ function saveSheetXML() {
 }
 
 function getBaseUrl() {
-  let groupId = utils.urlParams.groupId,
-      classId = utils.urlParams.classId;
+  let groupId = getParam("sharing_group"),
+      classId = getParam("sharing_class");
 
   groupId = (groupId && groupId.length > 0) ? groupId : "default";
   classId = (classId && classId.length > 0) ? classId : "default";
@@ -369,7 +385,7 @@ function makePolygonFromSpreadsheet(col, pointSuffix = "") {
           rgbColor = utils.hexToRgb(hexColor);
       gridApp.setColor(polyName, rgbColor.r, rgbColor.g, rgbColor.b);
 
-      if (!utils.urlParams.rulesOff && pointSuffix.length > 0) {
+      if (!getParam("rulesOff") && pointSuffix.length > 0) {
         addListener(polyName, translateListener);
       }
 
@@ -638,14 +654,14 @@ function plotListener(objName) {
 }
 
 function getGridId() {
-  return utils.urlParams.gridId ? utils.urlParams.gridId : "c23xKskj";
+  return getParam("gridId");
 }
 
 function getSheetId() {
-  return utils.urlParams.sheetId ? utils.urlParams.sheetId : "sA38WgGZ";
+  return getParam("sheetId");
 }
 
-var parameters = {
+const parameters = {
   "id": "gridApp",
   "width":900,
   "height":750,
@@ -665,7 +681,7 @@ var parameters = {
 };
 
 
-var parameters2 = {
+const parameters2 = {
   "id": "sheetApp",
   "width":700,
   "height":750,
@@ -685,13 +701,14 @@ var parameters2 = {
 };
 
 // is3D=is 3D applet using 3D view, AV=Algebra View, SV=Spreadsheet View, CV=CAS View, EV2=Graphics View 2, CP=Construction Protocol, PC=Probability Calculator, DA=Data Analysis, FI=Function Inspector, PV=Python, macro=Macro View
-var views = {'is3D': 0,'AV': 1,'SV': 1,'CV': 0,'EV2': 0,'CP': 0,'PC': 0,'DA': 0,'FI': 0,'PV': 0,'macro': 0};
+const views = {'is3D': 0,'AV': 1,'SV': 1,'CV': 0,'EV2': 0,'CP': 0,'PC': 0,'DA': 0,'FI': 0,'PV': 0,'macro': 0};
 
-export var applet = new GGBApplet(parameters, '5.0', views);
-export var applet2 = new GGBApplet(parameters2, '5.0', views);
-
+export const applet = new GGBApplet(parameters, '5.0', views);
+export const applet2 = new GGBApplet(parameters2, '5.0', views);
+export const setGroup = (v) => setParam('sharing_group', v);
 window.onload = function() {
   applet.inject('gridApp');
   applet2.inject('sheetApp');
-  sharing.share(() => { return gridApp }, 'gridApp');
+  const share = new Sharing(() => { return gridApp }, 'gridApp');
+  addChangeListener(resetFirebase);
 };
