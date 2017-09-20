@@ -709,6 +709,9 @@ export const setGroup = (v) => setParam('sharing_group', v);
 window.onload = function() {
   applet.inject('gridApp');
   applet2.inject('sheetApp');
-  const share = new Sharing(() => { return gridApp }, 'gridApp');
+  const share = new Sharing( () => [
+    { app: gridApp, name: "gridApp"   },
+    { app: sheetApp, name: "sheetApp" }
+  ]);
   addChangeListener(resetFirebase);
 };
