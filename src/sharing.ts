@@ -77,6 +77,9 @@ export default class Sharing {
         this.setContext(_context);
         const appPromises  = this.getAppF().map((geog) => this.snapshotPromise(geog.app, geog.name));
         return Promise.all(appPromises);
+      },
+      initCallback: (_context:Context) => {
+        this.setContext(_context);
       }
     }
     const sharePhone = new SharingClient({app});
