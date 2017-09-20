@@ -41,7 +41,7 @@ function loadGridXML() {
   if(gridFirebaseRef) {
     gridFirebaseRef.off();
     gridFirebaseRef = null;
-    console.log(" ✔ removed grid listener");
+    utils.log(" ✔ removed grid listener");
   }
   gridFirebaseRef = db.ref(getBaseUrl() + "/gridApp");
 
@@ -55,7 +55,7 @@ function loadGridXML() {
     }
     app1Loaded = true;
     checkAppsLoaded();
-    console.log(" ✔ new firebase grid data");
+    utils.log(" ✔ new firebase grid data");
   });
 }
 
@@ -64,7 +64,7 @@ function loadSheetXML() {
   if(sheetFirebaseRef) {
     sheetFirebaseRef.off();
     sheetFirebaseRef = null;
-    console.log(" ✔ removed sheet listener");
+    utils.log(" ✔ removed sheet listener");
   }
   sheetFirebaseRef = db.ref(getBaseUrl() + "/sheetApp");
   sheetFirebaseRef.on("value", function(snapshot) {
@@ -76,12 +76,12 @@ function loadSheetXML() {
     }
     app2Loaded = true;
     checkAppsLoaded();
-    console.log(" ✔ new firebase sheet data");
+    utils.log(" ✔ new firebase sheet data");
   });
 }
 
 function resetFirebase() {
-  console.log(" ✔ reseting Firebase");
+  utils.log(" ✔ reseting Firebase");
   loadGridXML();
   loadSheetXML();
 }
@@ -127,7 +127,7 @@ function restartListeners() {
 function sheetUndoRedoListener() {
   pauseListeners();
 
-  console.log("Undo/redo grid event");
+  utils.log("Undo/redo grid event");
   // Assume every row changed
   pointNames.forEach(pointName => {
     let row = utils.gridObjToSpreadSheetRow(pointName);
@@ -140,7 +140,7 @@ function sheetUndoRedoListener() {
 function gridUndoRedoListener() {
   pauseListeners();
 
-  console.log("Undo/redo sheet event");
+  utils.log("Undo/redo sheet event");
   // Assume every point moved
   pointNames.forEach(pointName => {
     pointListener(pointName);
@@ -490,7 +490,7 @@ function transformPointForShape(pointName, col, suffix) {
 function pointListener(objName) {
   pauseListeners();
 
-  console.log("Point listener: " + objName);
+  utils.log("Point listener: " + objName);
   let newCoords = getPointCoords(objName),
       spreadsheetRow = utils.gridObjToSpreadSheetRow(objName),
       oldCoords = getRowCoords(spreadsheetRow);
@@ -511,7 +511,7 @@ function pointListener(objName) {
 function dilateXListener(objName) {
   pauseListeners();
 
-  console.log("Dilate X listener: " + objName);
+  utils.log("Dilate X listener: " + objName);
   let newX = gridApp.getXcoord(objName),
       baseX = getMaxCoords()[0],
       newXDilation = Math.round(newX / baseX * 100) / 100,
@@ -532,7 +532,7 @@ function dilateXListener(objName) {
 function dilateYListener(objName) {
   pauseListeners();
 
-  console.log("Dilate Y listener: " + objName);
+  utils.log("Dilate Y listener: " + objName);
   let newY = gridApp.getYcoord(objName),
       baseY = getMaxCoords()[1],
       newYDilation = Math.round(newY / baseY * 100) / 100,
@@ -553,7 +553,7 @@ function dilateYListener(objName) {
 function dilateXYListener(objName) {
   pauseListeners();
 
-  console.log("Dilate XY listener: " + objName);
+  utils.log("Dilate XY listener: " + objName);
   let oldDilations = getDilationRules("C"),
       newCoords = getPointCoords(objName),
       baseCoords = getMaxCoords(),
@@ -578,7 +578,7 @@ function dilateXYListener(objName) {
 function ruleListener(objName) {
   pauseListeners();
 
-  console.log("Rule listener: " + objName);
+  utils.log("Rule listener: " + objName);
   pointNames.forEach(pointName => {
     transformPoint(pointName);
   });
@@ -592,7 +592,7 @@ function ruleListener(objName) {
 function rowListener(objName) {
   pauseListeners();
 
-  console.log("Row listener: " + objName);
+  utils.log("Row listener: " + objName);
   let row = utils.getRowFromSheetObject(objName),
       rowCoords = getRowCoords(row, "B");
 
@@ -614,7 +614,7 @@ function rowListener(objName) {
 function translateListener(objName) {
   pauseListeners();
 
-  console.log("Translate listener: " + objName);
+  utils.log("Translate listener: " + objName);
   // Pick a representative point from the transformed shape to find translation rules
   let sampleRow = 3,
       baseObj = utils.spreadSheetRowToGridObj(sampleRow),
