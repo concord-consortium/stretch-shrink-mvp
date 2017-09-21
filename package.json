@@ -19,7 +19,7 @@
     "build": "webpack"
   },
   "dependencies": {
-    "cc-sharing": "^1.0.8",
+    "cc-sharing": "^1.0.9",
     "lodash": "^4.17.4",
     "query-string": "^5.0.0"
   },
