@@ -255,7 +255,7 @@ function saveSheetXML() {
 
 function getBaseUrl() {
   let groupId = getParam("sharing_group"),
-      classId = getParam("sharing_class");
+      classId = getParam("sharing_clazz");
 
   groupId = (groupId && groupId.length > 0) ? groupId : "default";
   classId = (classId && classId.length > 0) ? classId : "default";
