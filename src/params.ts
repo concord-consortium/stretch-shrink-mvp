@@ -47,16 +47,14 @@ export function setParam(name:ParamName, value:any) {
 
 export function setParams(_newparams:Params) {
   Object.keys(defaultParams).forEach( (key:ParamName) => {
-    if( _newparams[key] === undefined || _newparams[key] === null) {
-      setParam(key, defaultParams[key]);
-    }
-    else {
-      setParam(key, _newparams[key]);
-    }
+    const useDefault = _newparams[key] === undefined || _newparams[key] === null
+    params[key] = useDefault ? defaultParams[key] : _newparams[key];
   });
+  history.pushState(params, "", `#${stringify(params)}`);
+  notifyChange();
 }
 
-export function addChangeListener(callbackF:Function) {
+export function addParamChangeListener(callbackF:Function) {
   listeners.push(callbackF);
 }
 
@@ -69,16 +67,17 @@ function parseHashParams() {
 }
 
 export function paramsFromContext(context:Context) {
-  setParam("sharing_offering", context.offering.id);
-  setParam("sharing_group",    context.group.id);
-  setParam("sharing_clazz",    context.clazz.id);
+  setParams({
+    sharing_offering: context.offering.id,
+    sharing_group:    context.group.id,
+    sharing_clazz:    context.clazz.id
+  })
 }
 
 function paramsFromAddress() {
   if(! isEqual(params, parse(window.location.hash))) {
     parseHashParams();
   }
-  console.log(params);
 }
 
 paramsFromAddress();

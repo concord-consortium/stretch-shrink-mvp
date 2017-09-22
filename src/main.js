@@ -3,7 +3,7 @@ const utils = require("./utils");
 // import { Sharing } from "./sharing";
 // const Sharing = require("./sharing");
 import Sharing from "./sharing";
-import { getParam, addChangeListener, setParam }  from "./params";
+import { getParam, addParamChangeListener, setParam }  from "./params";
 
 let objectsToListeners = {},
     app1Loaded = false,
@@ -13,6 +13,7 @@ let objectsToListeners = {},
 
 let sheetFirebaseRef = null;
 let gridFirebaseRef  = null;
+let addedSharing     = false;
 
 window.ggbOnInit = function(appName) {
   if (appName == "gridApp") {
@@ -25,6 +26,12 @@ window.ggbOnInit = function(appName) {
 
 function checkAppsLoaded() {
   if (app1Loaded && app2Loaded && firstLoad) {
+    const share = new Sharing( () => [
+      { app: gridApp, name: "gridApp"   },
+      { app: sheetApp, name: "sheetApp" }
+    ]);
+    addParamChangeListener(resetFirebase);
+
     pauseListeners();
 
     makePolygonsFromSpreadsheet();
@@ -257,8 +264,8 @@ function getBaseUrl() {
   let groupId = getParam("sharing_group"),
       classId = getParam("sharing_clazz");
 
-  groupId = (groupId && groupId.length > 0) ? groupId : "default";
-  classId = (classId && classId.length > 0) ? classId : "default";
+  groupId = (groupId && (""+groupId).length > 0) ? groupId : "default";
+  classId = (classId && (""+classId).length > 0) ? classId : "default";
 
   return "/classes/" + classId + "/groups/" + groupId;
 }
@@ -625,13 +632,13 @@ function translateListener(objName) {
 
       transformedObj = baseObj + objName.slice(objName.indexOf("'")),
       transformedCoords = getPointCoords(transformedObj),
-      newTranslationRules = [Math.round((transformedCoords[0] - dilatedCoords[0]) * 100) / 100, 
+      newTranslationRules = [Math.round((transformedCoords[0] - dilatedCoords[0]) * 100) / 100,
                              Math.round((transformedCoords[1] - dilatedCoords[1]) * 100) / 100],
 
-      xTransform = newTranslationRules[0] >= 0 
+      xTransform = newTranslationRules[0] >= 0
                     ? dilationRules[0] + "x + " + newTranslationRules[0]
                     : dilationRules[0] + "x - " + Math.abs(newTranslationRules[0]),
-      yTransform = newTranslationRules[1] >= 0 
+      yTransform = newTranslationRules[1] >= 0
                     ? dilationRules[1] + "y + " + newTranslationRules[1]
                     : dilationRules[1] + "y - " + Math.abs(newTranslationRules[1]);
 
@@ -709,9 +716,4 @@ export const setGroup = (v) => setParam('sharing_group', v);
 window.onload = function() {
   applet.inject('gridApp');
   applet2.inject('sheetApp');
-  const share = new Sharing( () => [
-    { app: gridApp, name: "gridApp"   },
-    { app: sheetApp, name: "sheetApp" }
-  ]);
-  addChangeListener(resetFirebase);
 };
