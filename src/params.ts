@@ -39,10 +39,14 @@ export function getParam(name:ParamName) {
   return params[name];
 }
 
+export function updateHash() {
+  window.location.hash = `${stringify(params)}`;
+  notifyChange();
+}
+
 export function setParam(name:ParamName, value:any) {
   params[name] = value;
-  history.pushState(params, "", `#${stringify(params)}`);
-  notifyChange();
+  updateHash();
 }
 
 export function setParams(_newparams:Params) {
@@ -50,8 +54,7 @@ export function setParams(_newparams:Params) {
     const useDefault = _newparams[key] === undefined || _newparams[key] === null
     params[key] = useDefault ? defaultParams[key] : _newparams[key];
   });
-  history.pushState(params, "", `#${stringify(params)}`);
-  notifyChange();
+  updateHash();
 }
 
 export function addParamChangeListener(callbackF:Function) {

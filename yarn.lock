@@ -360,9 +360,9 @@ caseless@~0.12.0:
   version "0.12.0"
   resolved "https://registry.yarnpkg.com/caseless/-/caseless-0.12.0.tgz#1b681c21ff84033c826543090689420d187151dc"
 
-cc-sharing@^1.0.9:
-  version "1.0.9"
-  resolved "https://registry.yarnpkg.com/cc-sharing/-/cc-sharing-1.0.9.tgz#72cdf5cede7b53154c425030e520a6c07243255c"
+cc-sharing@^1.0.11:
+  version "1.0.11"
+  resolved "https://registry.yarnpkg.com/cc-sharing/-/cc-sharing-1.0.11.tgz#cb027de3c0249886b016a186665a3250878db39e"
   dependencies:
     iframe-phone "^1.2.0"
     lodash "^4.17.4"

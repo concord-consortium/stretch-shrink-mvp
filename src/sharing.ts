@@ -69,9 +69,11 @@ export default class Sharing {
   share() {
     log(`✔ initiating sharing for ${name}`);
     const app:SharableApp = {
-      application: {
-        launchUrl: window.location.href,
-        name: "MugWumps"
+      application: () => {
+        return {
+          launchUrl: window.location.href,
+          name: "MugWumps"
+        }
       },
       getDataFunc: (_context:Context|null) => {
         this.setContext(_context);
