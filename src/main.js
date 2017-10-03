@@ -691,7 +691,7 @@ const parameters = {
 const parameters2 = {
   "id": "sheetApp",
   "width":700,
-  "height":750,
+  "height":550,
   "showMenuBar":false,
   "showAlgebraInput":false,
   "showToolBar":true,
