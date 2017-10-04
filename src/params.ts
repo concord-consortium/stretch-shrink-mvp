@@ -49,10 +49,18 @@ export function setParam(name:ParamName, value:any) {
   updateHash();
 }
 
-export function setParams(_newparams:Params) {
+export function setParamsWithDefaults(_newparams:Params) {
   Object.keys(defaultParams).forEach( (key:ParamName) => {
     const useDefault = _newparams[key] === undefined || _newparams[key] === null
     params[key] = useDefault ? defaultParams[key] : _newparams[key];
+  });
+  updateHash();
+}
+
+
+export function setParams(_newparams:Params) {
+  Object.keys(_newparams).forEach( (key:ParamName) => {
+    params[key] = _newparams[key];
   });
   updateHash();
 }
@@ -66,7 +74,7 @@ function notifyChange() {
 }
 
 function parseHashParams() {
-  setParams(parse(window.location.hash));
+  setParamsWithDefaults(parse(window.location.hash));
 }
 
 export function paramsFromContext(context:Context) {
@@ -82,6 +90,7 @@ function paramsFromAddress() {
     parseHashParams();
   }
 }
+
 
 paramsFromAddress();
 window.addEventListener("onLoad", () => paramsFromAddress);

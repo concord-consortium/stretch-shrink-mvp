@@ -22,7 +22,7 @@ window.ggbOnInit = function(appName) {
   if (appName == "sheetApp") {
     loadSheetXML();
   }
-}
+};
 
 function checkAppsLoaded() {
   if (app1Loaded && app2Loaded && firstLoad) {
@@ -77,6 +77,8 @@ function loadSheetXML() {
   sheetFirebaseRef.on("value", function(snapshot) {
     if (snapshot.val() && snapshot.val() !== sheetApp.getXML()) {
       sheetApp.setXML(snapshot.val());
+      pauseListeners();
+      makePolygonsFromSpreadsheet();
       if (!firstLoad) {
         restartListeners();
       }
@@ -156,9 +158,13 @@ function gridUndoRedoListener() {
   restartListeners();
 }
 
+function rulesOff() {
+  const _rulesOff = getParam("rulesOff");
+  return _rulesOff && _rulesOff !== "false";
+}
+
 function sheetListener(objName) {
-  const rulesOff = getParam("rulesOff");
-  if (rulesOff && rulesOff !== "false") {
+  if (rulesOff()) {
     if (!objName.startsWith("B")) {
       plotListener(objName);
     }
@@ -200,7 +206,7 @@ function toggleBaseComparison() {
   pauseListeners();
 
   if (!gridApp.getVisible("PolyCopy")) {
-    let copyPolyCommand = "PolyCopy = Polygon("
+    let copyPolyCommand = "PolyCopy = Polygon(";
     for (let i = 0; i < pointNames.length - 1; i++) {
       let coords = getPointCoords(pointNames[i]);
       copyPolyCommand += "(" + coords[0] + ", " + coords[1] + "), ";
@@ -220,9 +226,14 @@ function toggleBaseComparison() {
   restartListeners();
 }
 
+// debounce saving so that polygon drags are performant
+let saveStateTimeout = null;
 function saveState() {
-  saveGridXML();
-  saveSheetXML();
+  clearTimeout(saveStateTimeout);
+  saveStateTimeout = setTimeout(() => {
+    saveGridXML();
+    saveSheetXML();
+  }, 100);
 }
 
 function saveGridXML() {
@@ -305,6 +316,20 @@ function getRowCoords(rowNum, col="B") {
   return [xCoord, yCoord];
 }
 
+function makeButtonHandler(suffix) {
+  return function() {
+    pauseListeners();
+    let gridShapeName = "Poly" + suffix,
+        visibility = gridApp.getVisible(gridShapeName);
+
+    gridApp.setVisible(gridShapeName, !visibility);
+    pointNames.forEach(name => {
+      gridApp.setVisible(name + suffix, !visibility);
+    });
+    restartListeners();
+  };
+}
+
 function makeButtons() {
   let col = "C",
       suffix = "'",
@@ -320,17 +345,7 @@ function makeButtons() {
           shapeColor = sheetApp.getColor(col + 1),
           button = document.createElement("button");
 
-      button.onclick = (function(suffix) {return function() {
-        pauseListeners();
-        let gridShapeName = "Poly" + suffix,
-            visibility = gridApp.getVisible(gridShapeName);
-
-        gridApp.setVisible(gridShapeName, !visibility);
-        pointNames.forEach(name => {
-          gridApp.setVisible(name + suffix, !visibility);
-        });
-        restartListeners();
-      }}(suffix));
+      button.onclick = makeButtonHandler(suffix);
 
       button.innerText = "Toggle " + shapeName + " visibility";
       button.style.color = shapeColor;
@@ -367,11 +382,12 @@ function makePolygonFromSpreadsheet(col, pointSuffix = "") {
       row = 3,
       pointName = "A",
       polyName = "Poly" + pointSuffix,
-      polyString = polyName + " = Polygon(";
+      polyString = polyName + " = Polygon(",
+      addPointListener = pointName => addListener(pointName, pointListener);
   while (true) {
     coords = getRowCoords(row, col);
     xCoord = coords[0];
-    yCoord = coords[1]
+    yCoord = coords[1];
 
     if (!isNaN(xCoord) && !isNaN(yCoord)) {
       gridApp.evalCommand(pointName + pointSuffix + " = (" + xCoord + ", " + yCoord + ")");
@@ -379,20 +395,19 @@ function makePolygonFromSpreadsheet(col, pointSuffix = "") {
       if (pointNames.indexOf(pointName) === -1) {
         pointNames.push(pointName);
       }
+      addListener(pointName + pointSuffix, pointListener)
       gridApp.setLabelVisible(pointName + pointSuffix, true);
     } else {
       polyString = polyString.slice(0, polyString.length - 2) + ")";
       gridApp.evalCommand(polyString);
 
-      pointNames.forEach(pointName => {
-        addListener(pointName, pointListener);
-      });
+      pointNames.forEach(addPointListener);
 
       let hexColor = sheetApp.getColor(col + 1),
           rgbColor = utils.hexToRgb(hexColor);
       gridApp.setColor(polyName, rgbColor.r, rgbColor.g, rgbColor.b);
 
-      if (!getParam("rulesOff") && pointSuffix.length > 0) {
+      if (!rulesOff() && pointSuffix.length > 0) {
         addListener(polyName, translateListener);
       }
 
@@ -409,6 +424,10 @@ function makeMidpoints() {
   let maxCoords = getMaxCoords("'"),
       maxX = maxCoords[0],
       maxY = maxCoords[1];
+
+  if (rulesOff()) {
+    return;
+  }
 
   gridApp.evalCommand("X_MID = (" + maxX/2 + ", " + maxY + ")");
   gridApp.evalCommand("X_ZERO = (" + 0 + ", " + maxY + ")");
@@ -468,6 +487,10 @@ function transformPoint(pointName) {
   let col = "C",
       suffix = "'";
 
+  if (rulesOff()) {
+    return;
+  }
+
   while (true) {
     if (doesShapeExist(col)) {
       transformPointForShape(pointName, col, suffix);
@@ -486,7 +509,7 @@ function transformPointForShape(pointName, col, suffix) {
       spreadsheetRow = utils.gridObjToSpreadSheetRow(pointName),
       baseCoords = getRowCoords(spreadsheetRow),
       dilatedCoords = [baseCoords[0] * dilationRules[0], baseCoords[1] * dilationRules[1]],
-      transformedCoords = [dilatedCoords[0] + translationRules[0], dilatedCoords[1] + translationRules[1]]
+      transformedCoords = [dilatedCoords[0] + translationRules[0], dilatedCoords[1] + translationRules[1]];
 
   setCellCoordinateValue(col + spreadsheetRow, transformedCoords[0], transformedCoords[1]);
 
@@ -497,13 +520,14 @@ function transformPointForShape(pointName, col, suffix) {
 function pointListener(objName) {
   pauseListeners();
 
-  utils.log("Point listener: " + objName);
+  //utils.log("Point listener: " + objName);
   let newCoords = getPointCoords(objName),
+      spreadsheetCol = utils.shapeNameToCol(objName),
       spreadsheetRow = utils.gridObjToSpreadSheetRow(objName),
       oldCoords = getRowCoords(spreadsheetRow);
 
   // Update point coords in spreadsheet
-  setCellCoordinateValue("B" + spreadsheetRow, newCoords[0], newCoords[1]);
+  setCellCoordinateValue(spreadsheetCol + spreadsheetRow, newCoords[0], newCoords[1]);
 
   // Update transformed point coords in spreadsheet
   transformPoint(objName);
@@ -635,12 +659,8 @@ function translateListener(objName) {
       newTranslationRules = [Math.round((transformedCoords[0] - dilatedCoords[0]) * 100) / 100,
                              Math.round((transformedCoords[1] - dilatedCoords[1]) * 100) / 100],
 
-      xTransform = newTranslationRules[0] >= 0
-                    ? dilationRules[0] + "x + " + newTranslationRules[0]
-                    : dilationRules[0] + "x - " + Math.abs(newTranslationRules[0]),
-      yTransform = newTranslationRules[1] >= 0
-                    ? dilationRules[1] + "y + " + newTranslationRules[1]
-                    : dilationRules[1] + "y - " + Math.abs(newTranslationRules[1]);
+      xTransform = newTranslationRules[0] >= 0 ? dilationRules[0] + "x + " + newTranslationRules[0] : dilationRules[0] + "x - " + Math.abs(newTranslationRules[0]),
+      yTransform = newTranslationRules[1] >= 0 ? dilationRules[1] + "y + " + newTranslationRules[1] : dilationRules[1] + "y - " + Math.abs(newTranslationRules[1]);
 
   sheetApp.setTextValue(col + 2, "(" + xTransform + ", " + yTransform + ")");
 
