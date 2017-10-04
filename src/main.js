@@ -278,7 +278,8 @@ function getBaseUrl() {
   groupId = (groupId && (""+groupId).length > 0) ? groupId : "default";
   classId = (classId && (""+classId).length > 0) ? classId : "default";
 
-  return "/classes/" + classId + "/groups/" + groupId;
+  const baseUrl = "/classes/" + classId + "/groups/" + groupId;
+  return baseUrl;
 }
 
 // Retrieves max coords from the graph
@@ -677,6 +678,8 @@ function translateListener(objName) {
 function plotListener(objName) {
   pauseListeners();
   makePolygonsFromSpreadsheet();
+  makeMidpoints();
+  saveState();
   restartListeners();
 }
 
