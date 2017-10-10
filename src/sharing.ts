@@ -1,4 +1,4 @@
-import {SharingClient, Png, Context, SharableApp, Representation} from 'cc-sharing';
+import {SharingClient, Png, Context, SharableApp, Representation, escapeFirebaseKey} from 'cc-sharing';
 import { log } from "./utils";
 import { paramsFromContext } from "./params";
 
@@ -37,7 +37,7 @@ export default class Sharing {
       this.context = _context;
       paramsFromContext(_context);
       log(_context);
-      this.storageRefPath = `thumbnails/${this.context.offering.id}/${this.context.group.id}/${this.context.clazz.id}/${this.context.localId}`;
+      this.storageRefPath = `thumbnails/${escapeFirebaseKey(this.context.offering)}/${escapeFirebaseKey(this.context.group)}/${escapeFirebaseKey(this.context.class)}/${escapeFirebaseKey(this.context.id)}`;
     }
     else {
       log("No context passed in 💀");

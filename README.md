@@ -20,7 +20,7 @@ TODO: We are moving from query parameters to hash parameters. (TBD)
 - `sheetId` _string_ the GeoGebra material ID for the initial MugWump Sheet
 - `gridId`  _string_ the GeoGebra material ID for the initial Graph
 - `sharing_offfering` _string_ the offering for sharinator. This value will be **automatically set in some cases**.
-- `sharing_clazz` _string_ the class for sharinator. This value will be **automatically set in some cases**.
+- `sharing_class` _string_ the class for sharinator. This value will be **automatically set in some cases**.
 - `sharing_grpup` _string_ the group for sharinator. This value will be **automatically set in some cases**.
 
 ### References to GeoGebra embedding / scripting: ###

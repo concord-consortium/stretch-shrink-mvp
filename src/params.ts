@@ -1,42 +1,32 @@
-import { Context, Identifier } from 'cc-sharing';
+import { Context, Identifier, SharingParams, SharingParamName, SharingParamDefault } from 'cc-sharing';
 import { parse, stringify } from "query-string";
 import { isEqual } from "lodash";
 
-interface Params {
-  sharing_clazz?: Identifier;
-  sharing_offering?: Identifier;
-  sharing_group?: Identifier;
+interface Params extends SharingParams {
   sheetId?: Identifier;
   gridId?: Identifier;
   rulesOff?: boolean;
 }
 
-type ParamName =
-  "sharing_offering" |
-  "sharing_clazz" |
-  "sharing_group" |
+type ParamName = SharingParamName |
   "sheetId" |
   "gridId" |
   "rulesOff";
 
 const params:Params={}
-const sharingPrefix = "sharing_";
 const listeners:Function[] = [];
 
 const defaultParams = {
-  sharing_offering: "default",
-  sharing_clazz: "default",
-  sharing_group: "default",
+  sharing_offering: SharingParamDefault,
+  sharing_class: SharingParamDefault,
+  sharing_group: SharingParamDefault,
   sheetId: "sA38WgGZ",
   gridId: "c23xKskj",
   rulesOff: false
 };
 
-export function getParam(name:ParamName) {
-  if(params[name] === undefined) {
-    return defaultParams[name]
-  }
-  return params[name];
+export function getParam(name:ParamName, _default:string="") {
+  return params[name] || defaultParams[name] || _default;
 }
 
 export function updateHash() {
@@ -79,9 +69,9 @@ function parseHashParams() {
 
 export function paramsFromContext(context:Context) {
   setParams({
-    sharing_offering: context.offering.id,
-    sharing_group:    context.group.id,
-    sharing_clazz:    context.clazz.id
+    sharing_offering: context.offering,
+    sharing_group:    context.group,
+    sharing_class:    context.class
   })
 }
 
@@ -90,7 +80,6 @@ function paramsFromAddress() {
     parseHashParams();
   }
 }
-
 
 paramsFromAddress();
 window.addEventListener("onLoad", () => paramsFromAddress);

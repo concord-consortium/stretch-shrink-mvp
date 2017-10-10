@@ -4,6 +4,7 @@ const utils = require("./utils");
 // const Sharing = require("./sharing");
 import Sharing from "./sharing";
 import { getParam, addParamChangeListener, setParam }  from "./params";
+import { SharingParamDefault, escapeFirebaseKey } from "cc-sharing";
 
 let objectsToListeners = {},
     app1Loaded = false,
@@ -272,13 +273,10 @@ function saveSheetXML() {
 }
 
 function getBaseUrl() {
-  let groupId = getParam("sharing_group"),
-      classId = getParam("sharing_clazz");
+  let groupId = escapeFirebaseKey(getParam("sharing_group", SharingParamDefault)),
+      classId = escapeFirebaseKey(getParam("sharing_class", SharingParamDefault));
 
-  groupId = (groupId && (""+groupId).length > 0) ? groupId : "default";
-  classId = (classId && (""+classId).length > 0) ? classId : "default";
-
-  const baseUrl = "/classes/" + classId + "/groups/" + groupId;
+  const baseUrl = `classes/${classId}/groups/${groupId}/`;
   return baseUrl;
 }
 
