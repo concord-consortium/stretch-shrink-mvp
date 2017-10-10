@@ -15,6 +15,33 @@ let objectsToListeners = {},
 let sheetFirebaseRef = null;
 let gridFirebaseRef  = null;
 let addedSharing     = false;
+const cloneId        = getParam("sharing_clone");
+const isClone        = cloneId ? cloneId !== SharingParamDefault : false;
+
+const logId = Math.round(Math.random() * 100000000);
+
+function checkForCloneOnLoad(callback) {
+  if (isClone) {
+    const database = firebase.database();
+    const cloneRef = database.ref(getCloneUrl());
+    cloneRef.once("value", function (cloneSnapshot) {
+      if (!cloneSnapshot.val()) {
+        // clone has no value so copy the base data into it
+        const baseRef = database.ref(getBaseUrl(true));
+        baseRef.once("value", function (baseSnapshot) {
+          cloneRef.set(baseSnapshot.val());
+          callback();
+        });
+      }
+      else {
+        callback();
+      }
+    });
+  }
+  else {
+    callback();
+  }
+}
 
 window.ggbOnInit = function(appName) {
   if (appName == "gridApp") {
@@ -272,12 +299,22 @@ function saveSheetXML() {
   ref.update(update);
 }
 
-function getBaseUrl() {
+function getCloneUrl() {
+  const cloneUrl = `clones/${cloneId}`;
+  //console.log(logId, "cloneUrl", cloneUrl);
+  return cloneUrl;
+}
+
+function getBaseUrl(forceNonCloneUrl) {
   let groupId = escapeFirebaseKey(getParam("sharing_group", SharingParamDefault)),
       classId = escapeFirebaseKey(getParam("sharing_class", SharingParamDefault));
 
-  const baseUrl = `classes/${classId}/groups/${groupId}/`;
-  return baseUrl;
+  if (!isClone || forceNonCloneUrl) {
+    const baseUrl = `classes/${classId}/groups/${groupId}/`;
+    //console.log(logId, "baseUrl", baseUrl, "!isClone", !isClone, "forceNonCloneUrl", forceNonCloneUrl);
+    return baseUrl;
+  }
+  return getCloneUrl();
 }
 
 // Retrieves max coords from the graph
@@ -394,7 +431,7 @@ function makePolygonFromSpreadsheet(col, pointSuffix = "") {
       if (pointNames.indexOf(pointName) === -1) {
         pointNames.push(pointName);
       }
-      addListener(pointName + pointSuffix, pointListener)
+      addListener(pointName + pointSuffix, pointListener);
       gridApp.setLabelVisible(pointName + pointSuffix, true);
     } else {
       polyString = polyString.slice(0, polyString.length - 2) + ")";
@@ -735,6 +772,8 @@ export const applet = new GGBApplet(parameters, '5.0', views);
 export const applet2 = new GGBApplet(parameters2, '5.0', views);
 export const setGroup = (v) => setParam('sharing_group', v);
 window.onload = function() {
-  applet.inject('gridApp');
-  applet2.inject('sheetApp');
+  checkForCloneOnLoad(function () {
+    applet.inject('gridApp');
+    applet2.inject('sheetApp');
+  });
 };

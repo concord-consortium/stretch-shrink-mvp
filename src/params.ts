@@ -1,6 +1,6 @@
 import { Context, Identifier, SharingParams, SharingParamName, SharingParamDefault } from 'cc-sharing';
 import { parse, stringify } from "query-string";
-import { isEqual } from "lodash";
+import { isEqual, clone } from "lodash";
 
 interface Params extends SharingParams {
   sheetId?: Identifier;
@@ -20,6 +20,7 @@ const defaultParams = {
   sharing_offering: SharingParamDefault,
   sharing_class: SharingParamDefault,
   sharing_group: SharingParamDefault,
+  sharing_clone: SharingParamDefault,
   sheetId: "sA38WgGZ",
   gridId: "c23xKskj",
   rulesOff: false
@@ -84,4 +85,3 @@ function paramsFromAddress() {
 paramsFromAddress();
 window.addEventListener("onLoad", () => paramsFromAddress);
 window.addEventListener("hashchange", paramsFromAddress, false);
-
