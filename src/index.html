@@ -1,8 +1,8 @@
 
 <!DOCTYPE html>
-<html> 
-  <head> 
-    <title>GeoGebra and JavaScript</title> 
+<html>
+  <head>
+    <title>GeoGebra and JavaScript</title>
     <script src="https://www.gstatic.com/firebasejs/4.3.0/firebase.js"></script>
     <script>
       // Initialize Firebase
@@ -17,22 +17,19 @@
       firebase.initializeApp(config);
     </script>
     <script src="https://cdn.geogebra.org/apps/deployggb.js"></script>
-    <script src="utils.js"></script>
-    <script src="sharing-lib.min.js"></script>
-    <script src="sharing.js"></script>
-    <script src="main.js"></script>
+    <script src="index.js" defer='true'></script>
     <link rel="stylesheet" type="text/css" href="style.css">
-  </head> 
-   
-  <body> 
-    <div id="appContainer"> 
-      <div id="sheetApp"></div>
-      <div id="gridApp"></div>
-    </div>
+  </head>
+
+  <body>
     <div id="buttons">
-      <button onclick="resetSave()">Reset to Default</button>
-      <button onclick="toggleBaseComparison()" style="color: red">Toggle Comparison Mug</button>
+      <button id="reset">Reset to Default</button>
+      <button id="toggle-compare"  style="color: red">Toggle Comparison Mug</button>
       <div id="visiblity-buttons"></div>
     </div>
-  </body> 
-</html> 
+    <div id="appContainer">
+        <div id="sheetApp"></div>
+        <div id="gridApp"></div>
+      </div>
+  </body>
+</html>

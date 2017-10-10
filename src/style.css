@@ -3,7 +3,7 @@
   flex-direction: row;
 }
 
-.KeyBoard {
+.KeyBoard, .openKeyboardButton {
   display: none;
 }
 
