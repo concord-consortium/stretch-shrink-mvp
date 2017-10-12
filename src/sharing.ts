@@ -78,8 +78,6 @@ export default class Sharing {
       application: () => {
         let launchUrl = window.location.href
         if (publishing) {
-          debugger
-
           // save a copy of the current firebase data into a cloned session
           const cloneId = uuid()
           const cloneRef = firebase.database().ref(`clones/${cloneId}`)
