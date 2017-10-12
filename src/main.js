@@ -22,16 +22,11 @@ const logId = Math.round(Math.random() * 100000000);
 
 function checkForCloneOnLoad(callback) {
   if (isClone) {
-    const database = firebase.database();
-    const cloneRef = database.ref(getCloneUrl());
+    const cloneRef = firebase.database().ref(getCloneUrl());
     cloneRef.once("value", function (cloneSnapshot) {
       if (!cloneSnapshot.val()) {
         // clone has no value so copy the base data into it
-        const baseRef = database.ref(getBaseUrl(true));
-        baseRef.once("value", function (baseSnapshot) {
-          cloneRef.set(baseSnapshot.val());
-          callback();
-        });
+        cloneData(cloneRef, callback);
       }
       else {
         callback();
@@ -41,6 +36,16 @@ function checkForCloneOnLoad(callback) {
   else {
     callback();
   }
+}
+
+function cloneData(cloneRef, callback) {
+  const baseRef = firebase.database().ref(getBaseUrl(true));
+  baseRef.once("value", function (baseSnapshot) {
+    cloneRef.set(baseSnapshot.val());
+    if (callback) {
+      callback();
+    }
+  });
 }
 
 window.ggbOnInit = function(appName) {
@@ -57,7 +62,7 @@ function checkAppsLoaded() {
     const share = new Sharing( () => [
       { app: gridApp, name: "gridApp"   },
       { app: sheetApp, name: "sheetApp" }
-    ]);
+    ], cloneData);
     addParamChangeListener(resetFirebase);
 
     pauseListeners();
@@ -301,7 +306,6 @@ function saveSheetXML() {
 
 function getCloneUrl() {
   const cloneUrl = `clones/${cloneId}`;
-  //console.log(logId, "cloneUrl", cloneUrl);
   return cloneUrl;
 }
 
@@ -311,11 +315,12 @@ function getBaseUrl(forceNonCloneUrl) {
 
   if (!isClone || forceNonCloneUrl) {
     const baseUrl = `classes/${classId}/groups/${groupId}/`;
-    //console.log(logId, "baseUrl", baseUrl, "!isClone", !isClone, "forceNonCloneUrl", forceNonCloneUrl);
     return baseUrl;
   }
   return getCloneUrl();
 }
+
+
 
 // Retrieves max coords from the graph
 function getMaxCoords(pointSuffix="") {

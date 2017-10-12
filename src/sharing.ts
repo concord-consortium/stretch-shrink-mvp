@@ -1,9 +1,12 @@
 import {SharingClient, Png, Context, SharableApp, Representation, escapeFirebaseKey} from 'cc-sharing';
 import { log } from "./utils";
 import { paramsFromContext } from "./params";
+import { v1 as uuid  } from "uuid"
+import * as queryString from "query-string"
 
 interface Firebse {
   storage:any;
+  database:any;
 };
 interface FBStorageRef {
   downloadURL: string;
@@ -26,9 +29,11 @@ export default class Sharing {
   context: Context;
   storageRefPath: string;
   getAppF:()=>appDescriptor[]
+  cloneData: (cloneRef:any, callback?:Function) => void
 
-  constructor(getAppF:()=>appDescriptor[]) {
+  constructor(getAppF:()=>appDescriptor[], cloneData: (cloneRef:any, callback?:Function) => void) {
     this.getAppF = getAppF;
+    this.cloneData = cloneData;
     this.share();
   }
 
@@ -68,14 +73,34 @@ export default class Sharing {
 
   share() {
     log(`✔ initiating sharing for ${name}`);
+    let publishing = false
     const app:SharableApp = {
       application: () => {
+        let launchUrl = window.location.href
+        if (publishing) {
+          debugger
+
+          // save a copy of the current firebase data into a cloned session
+          const cloneId = uuid()
+          const cloneRef = firebase.database().ref(`clones/${cloneId}`)
+          this.cloneData(cloneRef)
+
+          const a = document.createElement("a")
+          a.href = window.location.href
+          const hashParams = queryString.parse(a.hash.substr(1))
+          hashParams.sharing_clone = cloneId
+          a.hash = queryString.stringify(hashParams)
+          launchUrl = a.toString()
+
+          publishing = false
+        }
         return {
-          launchUrl: window.location.href,
+          launchUrl: launchUrl,
           name: "MugWumps"
         }
       },
       getDataFunc: (_context:Context|null) => {
+        publishing = true
         this.setContext(_context);
         const appPromises  = this.getAppF().map((geog) => this.snapshotPromise(geog.app, geog.name));
         return Promise.all(appPromises);
