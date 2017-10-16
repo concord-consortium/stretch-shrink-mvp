@@ -310,11 +310,13 @@ function getCloneUrl() {
 }
 
 function getBaseUrl(forceNonCloneUrl) {
-  let groupId = escapeFirebaseKey(getParam("sharing_group", SharingParamDefault)),
+  let offeringId = escapeFirebaseKey(getParam("sharing_offering", SharingParamDefault)),
+      groupId = escapeFirebaseKey(getParam("sharing_group", SharingParamDefault)),
       classId = escapeFirebaseKey(getParam("sharing_class", SharingParamDefault));
 
   if (!isClone || forceNonCloneUrl) {
-    const baseUrl = `classes/${classId}/groups/${groupId}/`;
+    const baseUrl = `classes/${classId}/groups/${groupId}/offerings/${offeringId}`;
+    console.log("Mugwumps BaseUrl:", baseUrl);
     return baseUrl;
   }
   return getCloneUrl();
