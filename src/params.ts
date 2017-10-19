@@ -17,6 +17,7 @@ const params:Params={}
 const listeners:Function[] = [];
 
 const defaultParams = {
+  sharing_publication: SharingParamDefault,
   sharing_offering: SharingParamDefault,
   sharing_class: SharingParamDefault,
   sharing_group: SharingParamDefault,
@@ -40,12 +41,14 @@ export function setParam(name:ParamName, value:any) {
   updateHash("setParam");
 }
 
-export function setParamsWithDefaults(_newparams:Params, via:string) {
+export function setParamsWithDefaults(_newparams:Params, via:string, skipUpdateHash:boolean = false) {
   Object.keys(defaultParams).forEach( (key:ParamName) => {
     const useDefault = _newparams[key] === undefined || _newparams[key] === null
     params[key] = useDefault ? defaultParams[key] : _newparams[key];
   });
-  updateHash(via);
+  if (!skipUpdateHash) {
+    updateHash(via);
+  }
 }
 
 
@@ -72,16 +75,15 @@ export function paramsFromContext(context:Context, via:string) {
   }, via)
 }
 
-function paramsFromAddress(via:string) {
+function paramsFromAddress(via:string, skipUpdateHash:boolean = false) {
   if(! isEqual(params, parse(window.location.hash))) {
-    setParamsWithDefaults(parse(window.location.hash), via);
+    setParamsWithDefaults(parse(window.location.hash), via, skipUpdateHash);
   }
 }
 
 // load from params if not in iframe
-if (window.top === window.self) {
-  paramsFromAddress("direct call");
-  window.addEventListener("onLoad", () => paramsFromAddress("onLoad"));
-}
+const skipUpdateHash = window.top !== window.self;
+paramsFromAddress("direct call", skipUpdateHash);
 
+//window.addEventListener("onLoad", () => paramsFromAddress("onLoad"));
 //window.addEventListener("hashchange", () => paramsFromAddress("hashchange"), false);

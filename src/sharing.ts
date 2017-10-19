@@ -28,16 +28,21 @@ declare var firebase:Firebse;
 export default class Sharing {
   context: Context;
   storageRefPath: string;
+  isClone: boolean
   getAppF:()=>appDescriptor[]
   cloneData: (cloneRef:any, callback?:Function) => void
 
-  constructor(getAppF:()=>appDescriptor[], cloneData: (cloneRef:any, callback?:Function) => void) {
+  constructor(getAppF:()=>appDescriptor[], isClone:boolean, cloneData: (cloneRef:any, callback?:Function) => void) {
     this.getAppF = getAppF;
+    this.isClone = isClone;
     this.cloneData = cloneData;
     this.share();
   }
 
   setContext(_context:Context|null) {
+    if (this.isClone) {
+      return
+    }
     if(_context !== null) {
       this.context = _context;
       paramsFromContext(_context, "setContext");
@@ -79,15 +84,15 @@ export default class Sharing {
         let launchUrl = window.location.href
         if (publishing) {
           // save a copy of the current firebase data into a cloned session
-          const cloneId = uuid()
-          const cloneRef = firebase.database().ref(`clones/${cloneId}`)
-          this.cloneData(cloneRef)
+          const publicationId = uuid()
+          const publishRef = firebase.database().ref(`publications/${publicationId}`)
+          this.cloneData(publishRef)
 
           const a = document.createElement("a")
           a.href = window.location.href
-          const hashParams = queryString.parse(a.hash.substr(1))
-          hashParams.sharing_clone = cloneId
-          a.hash = queryString.stringify(hashParams)
+          a.hash = queryString.stringify({
+            sharing_publication: publicationId
+          })
           launchUrl = a.toString()
 
           publishing = false
@@ -107,7 +112,9 @@ export default class Sharing {
         this.setContext(_context);
       }
     }
-    const sharePhone = new SharingClient({app});
+    if (!this.isClone) {
+      const sharePhone = new SharingClient({app});
+    }
     //log(`✔ sharing enabled for ${name}`);
   }
 }

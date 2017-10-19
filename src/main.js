@@ -16,7 +16,9 @@ let sheetFirebaseRef = null;
 let gridFirebaseRef  = null;
 let addedSharing     = false;
 const cloneId        = getParam("sharing_clone");
+const publicationId  = getParam("sharing_publication");
 const isClone        = cloneId ? cloneId !== SharingParamDefault : false;
+const isPublication  = publicationId ? publicationId !== SharingParamDefault : false;
 
 const logId = Math.round(Math.random() * 100000000);
 
@@ -42,7 +44,8 @@ function checkForCloneOnLoad(callback) {
 function cloneData(cloneRef, callback) {
   const baseRef = firebase.database().ref(getBaseUrl(true));
   baseRef.once("value", function (baseSnapshot) {
-    cloneRef.set(baseSnapshot.val());
+    const data = baseSnapshot.val();
+    cloneRef.set(data);
     if (callback) {
       callback();
     }
@@ -63,7 +66,7 @@ function checkAppsLoaded() {
     const share = new Sharing( () => [
       { app: gridApp, name: "gridApp"   },
       { app: sheetApp, name: "sheetApp" }
-    ], cloneData);
+    ], isClone, cloneData);
     addParamChangeListener(resetFirebase);
 
     pauseListeners();
@@ -347,10 +350,11 @@ function getCloneUrl() {
 }
 
 function isDefaultBaseUrl() {
-  const offeringId = escapeFirebaseKey(getParam("sharing_offering", SharingParamDefault)),
-      groupId = escapeFirebaseKey(getParam("sharing_group", SharingParamDefault)),
-      classId = escapeFirebaseKey(getParam("sharing_class", SharingParamDefault));
-  return (offeringId === SharingParamDefault) && (groupId === SharingParamDefault) && (classId === SharingParamDefault);
+  const publicationId = escapeFirebaseKey(getParam("sharing_publication", SharingParamDefault)),
+        offeringId = escapeFirebaseKey(getParam("sharing_offering", SharingParamDefault)),
+        groupId = escapeFirebaseKey(getParam("sharing_group", SharingParamDefault)),
+        classId = escapeFirebaseKey(getParam("sharing_class", SharingParamDefault));
+  return (publicationId === SharingParamDefault) && (offeringId === SharingParamDefault) && (groupId === SharingParamDefault) && (classId === SharingParamDefault);
 }
 
 function getBaseUrl(forceNonCloneUrl) {
@@ -359,14 +363,15 @@ function getBaseUrl(forceNonCloneUrl) {
         classId = escapeFirebaseKey(getParam("sharing_class", SharingParamDefault));
 
   if (!isClone || forceNonCloneUrl) {
+    if (isPublication) {
+      return `publications/${publicationId}`;
+    }
     const baseUrl = `classes/${classId}/groups/${groupId}/offerings/${offeringId}`;
     //console.log("Mugwumps BaseUrl:", baseUrl);
     return baseUrl;
   }
   return getCloneUrl();
 }
-
-
 
 // Retrieves max coords from the graph
 function getMaxCoords(pointSuffix="") {
