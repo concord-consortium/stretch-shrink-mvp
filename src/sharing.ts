@@ -1,6 +1,6 @@
 import {SharingClient, Png, Context, SharableApp, Representation, escapeFirebaseKey} from 'cc-sharing';
 import { log } from "./utils";
-import { paramsFromContext } from "./params";
+import { paramsFromContext, paramsWithoutSharing } from "./params";
 import { v1 as uuid  } from "uuid"
 import * as queryString from "query-string"
 
@@ -88,11 +88,12 @@ export default class Sharing {
           const publishRef = firebase.database().ref(`publications/${publicationId}`)
           this.cloneData(publishRef)
 
+          // remove all the sharing params and add the publication id
+          const params = paramsWithoutSharing()
+          params.sharing_publication = publicationId
           const a = document.createElement("a")
-          a.href = window.location.href
-          a.hash = queryString.stringify({
-            sharing_publication: publicationId
-          })
+          a.href = launchUrl
+          a.hash = queryString.stringify(params)
           launchUrl = a.toString()
 
           publishing = false

@@ -27,6 +27,16 @@ const defaultParams = {
   rulesOff: false
 };
 
+export function paramsWithoutSharing() {
+  const p:any = {};
+  Object.keys(params).forEach((key) => {
+    if (!key.match(/sharing_/)) {
+      p[key] = (params as any)[key]
+    }
+  })
+  return p
+}
+
 export function getParam(name:ParamName, _default:string="") {
   return params[name] || defaultParams[name] || _default;
 }
