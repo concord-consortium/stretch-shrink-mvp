@@ -16,12 +16,15 @@ let sheetFirebaseRef = null;
 let gridFirebaseRef  = null;
 let addedSharing     = false;
 const cloneId        = getParam("sharing_clone");
+const publicationId  = getParam("sharing_publication");
 const isClone        = cloneId ? cloneId !== SharingParamDefault : false;
+const isPublication  = publicationId ? publicationId !== SharingParamDefault : false;
 
 const logId = Math.round(Math.random() * 100000000);
 
 function checkForCloneOnLoad(callback) {
   if (isClone) {
+    console.log("MW Clone Ref", getCloneUrl());
     const cloneRef = firebase.database().ref(getCloneUrl());
     cloneRef.once("value", function (cloneSnapshot) {
       if (!cloneSnapshot.val()) {
@@ -41,7 +44,8 @@ function checkForCloneOnLoad(callback) {
 function cloneData(cloneRef, callback) {
   const baseRef = firebase.database().ref(getBaseUrl(true));
   baseRef.once("value", function (baseSnapshot) {
-    cloneRef.set(baseSnapshot.val());
+    const data = baseSnapshot.val();
+    cloneRef.set(data);
     if (callback) {
       callback();
     }
@@ -50,10 +54,10 @@ function cloneData(cloneRef, callback) {
 
 window.ggbOnInit = function(appName) {
   if (appName == "gridApp") {
-    loadGridXML();
+    loadGridXML("ggbOnInit");
   }
   if (appName == "sheetApp") {
-    loadSheetXML();
+    loadSheetXML("ggbOnInit");
   }
 };
 
@@ -62,7 +66,7 @@ function checkAppsLoaded() {
     const share = new Sharing( () => [
       { app: gridApp, name: "gridApp"   },
       { app: sheetApp, name: "sheetApp" }
-    ], cloneData);
+    ], isClone, cloneData);
     addParamChangeListener(resetFirebase);
 
     pauseListeners();
@@ -76,14 +80,27 @@ function checkAppsLoaded() {
 }
 
 // TODO: Combine the logic of these functions
-function loadGridXML() {
+function loadGridXML(via) {
   let db = firebase.database();
   if(gridFirebaseRef) {
     gridFirebaseRef.off();
     gridFirebaseRef = null;
-    utils.log(" ✔ removed grid listener");
+    //utils.log(" ✔ removed grid listener");
   }
+
+  const postGridXMLLoad = () => {
+    app1Loaded = true;
+    checkAppsLoaded();
+  };
+
+  // don't load default data
+  if (isDefaultBaseUrl()) {
+    postGridXMLLoad();
+    return;
+  }
+
   gridFirebaseRef = db.ref(getBaseUrl() + "/gridApp");
+  console.log("MW gridFirebaseRef via", via, gridFirebaseRef.toString());
 
   gridFirebaseRef.on("value", function(snapshot) {
     if (snapshot.val() && snapshot.val() !== gridApp.getXML()) {
@@ -93,20 +110,32 @@ function loadGridXML() {
         restartListeners();
       }
     }
-    app1Loaded = true;
-    checkAppsLoaded();
-    utils.log(" ✔ new firebase grid data");
+    postGridXMLLoad();
+    //utils.log(" ✔ new firebase grid data");
   });
 }
 
-function loadSheetXML() {
+function loadSheetXML(via) {
   let db = firebase.database();
   if(sheetFirebaseRef) {
     sheetFirebaseRef.off();
     sheetFirebaseRef = null;
-    utils.log(" ✔ removed sheet listener");
+    //utils.log(" ✔ removed sheet listener");
   }
+
+  const postSheetXMLLoad = () => {
+    app2Loaded = true;
+    checkAppsLoaded();
+  };
+
+  // don't load default data
+  if (isDefaultBaseUrl()) {
+    postSheetXMLLoad();
+    return;
+  }
+
   sheetFirebaseRef = db.ref(getBaseUrl() + "/sheetApp");
+  console.log("MW sheetFirebaseRef via", via, sheetFirebaseRef.toString());
   sheetFirebaseRef.on("value", function(snapshot) {
     if (snapshot.val() && snapshot.val() !== sheetApp.getXML()) {
       sheetApp.setXML(snapshot.val());
@@ -116,16 +145,15 @@ function loadSheetXML() {
         restartListeners();
       }
     }
-    app2Loaded = true;
-    checkAppsLoaded();
-    utils.log(" ✔ new firebase sheet data");
+    postSheetXMLLoad();
+    //utils.log(" ✔ new firebase sheet data");
   });
 }
 
-function resetFirebase() {
-  utils.log(" ✔ reseting Firebase");
-  loadGridXML();
-  loadSheetXML();
+function resetFirebase(via) {
+  //utils.log(" ✔ reseting Firebase");
+  loadGridXML(via);
+  loadSheetXML(via);
 }
 
 
@@ -169,7 +197,7 @@ function restartListeners() {
 function sheetUndoRedoListener() {
   pauseListeners();
 
-  utils.log("Undo/redo grid event");
+  //utils.log("Undo/redo grid event");
   // Assume every row changed
   pointNames.forEach(pointName => {
     let row = utils.gridObjToSpreadSheetRow(pointName);
@@ -182,7 +210,7 @@ function sheetUndoRedoListener() {
 function gridUndoRedoListener() {
   pauseListeners();
 
-  utils.log("Undo/redo sheet event");
+  //utils.log("Undo/redo sheet event");
   // Assume every point moved
   pointNames.forEach(pointName => {
     pointListener(pointName);
@@ -225,6 +253,10 @@ function doesShapeExist(col) {
 }
 
 function resetSave() {
+  if (isDefaultBaseUrl()) {
+    return;
+  }
+
   let database = firebase.database(),
       ref = database.ref(getBaseUrl()),
       update = {
@@ -270,6 +302,10 @@ function saveState() {
 }
 
 function saveGridXML() {
+  if (isDefaultBaseUrl()) {
+    return;
+  }
+
   let database = firebase.database(),
       ref = database.ref(getBaseUrl()),
       update = {
@@ -280,6 +316,10 @@ function saveGridXML() {
 }
 
 function saveSheetXML() {
+  if (isDefaultBaseUrl()) {
+    return;
+  }
+
   let baseXML = sheetApp.getXML(),
       parser = new DOMParser(),
       xmlDoc = parser.parseFromString(baseXML,"text/xml"),
@@ -309,20 +349,29 @@ function getCloneUrl() {
   return cloneUrl;
 }
 
+function isDefaultBaseUrl() {
+  const publicationId = escapeFirebaseKey(getParam("sharing_publication", SharingParamDefault)),
+        offeringId = escapeFirebaseKey(getParam("sharing_offering", SharingParamDefault)),
+        groupId = escapeFirebaseKey(getParam("sharing_group", SharingParamDefault)),
+        classId = escapeFirebaseKey(getParam("sharing_class", SharingParamDefault));
+  return (publicationId === SharingParamDefault) && (offeringId === SharingParamDefault) && (groupId === SharingParamDefault) && (classId === SharingParamDefault);
+}
+
 function getBaseUrl(forceNonCloneUrl) {
-  let offeringId = escapeFirebaseKey(getParam("sharing_offering", SharingParamDefault)),
-      groupId = escapeFirebaseKey(getParam("sharing_group", SharingParamDefault)),
-      classId = escapeFirebaseKey(getParam("sharing_class", SharingParamDefault));
+  const offeringId = escapeFirebaseKey(getParam("sharing_offering", SharingParamDefault)),
+        groupId = escapeFirebaseKey(getParam("sharing_group", SharingParamDefault)),
+        classId = escapeFirebaseKey(getParam("sharing_class", SharingParamDefault));
 
   if (!isClone || forceNonCloneUrl) {
+    if (isPublication) {
+      return `publications/${publicationId}`;
+    }
     const baseUrl = `classes/${classId}/groups/${groupId}/offerings/${offeringId}`;
-    console.log("Mugwumps BaseUrl:", baseUrl);
+    //console.log("Mugwumps BaseUrl:", baseUrl);
     return baseUrl;
   }
   return getCloneUrl();
 }
-
-
 
 // Retrieves max coords from the graph
 function getMaxCoords(pointSuffix="") {
@@ -585,7 +634,7 @@ function pointListener(objName) {
 function dilateXListener(objName) {
   pauseListeners();
 
-  utils.log("Dilate X listener: " + objName);
+  //utils.log("Dilate X listener: " + objName);
   let newX = gridApp.getXcoord(objName),
       baseX = getMaxCoords()[0],
       newXDilation = Math.round(newX / baseX * 100) / 100,
@@ -606,7 +655,7 @@ function dilateXListener(objName) {
 function dilateYListener(objName) {
   pauseListeners();
 
-  utils.log("Dilate Y listener: " + objName);
+  //utils.log("Dilate Y listener: " + objName);
   let newY = gridApp.getYcoord(objName),
       baseY = getMaxCoords()[1],
       newYDilation = Math.round(newY / baseY * 100) / 100,
@@ -627,7 +676,7 @@ function dilateYListener(objName) {
 function dilateXYListener(objName) {
   pauseListeners();
 
-  utils.log("Dilate XY listener: " + objName);
+  //utils.log("Dilate XY listener: " + objName);
   let oldDilations = getDilationRules("C"),
       newCoords = getPointCoords(objName),
       baseCoords = getMaxCoords(),
@@ -652,7 +701,7 @@ function dilateXYListener(objName) {
 function ruleListener(objName) {
   pauseListeners();
 
-  utils.log("Rule listener: " + objName);
+  //utils.log("Rule listener: " + objName);
   pointNames.forEach(pointName => {
     transformPoint(pointName);
   });
@@ -666,7 +715,7 @@ function ruleListener(objName) {
 function rowListener(objName) {
   pauseListeners();
 
-  utils.log("Row listener: " + objName);
+  //utils.log("Row listener: " + objName);
   let row = utils.getRowFromSheetObject(objName),
       rowCoords = getRowCoords(row, "B");
 
@@ -688,7 +737,7 @@ function rowListener(objName) {
 function translateListener(objName) {
   pauseListeners();
 
-  utils.log("Translate listener: " + objName);
+  //utils.log("Translate listener: " + objName);
   // Pick a representative point from the transformed shape to find translation rules
   let sampleRow = 3,
       baseObj = utils.spreadSheetRowToGridObj(sampleRow),

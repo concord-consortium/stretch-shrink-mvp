@@ -17,6 +17,7 @@ const params:Params={}
 const listeners:Function[] = [];
 
 const defaultParams = {
+  sharing_publication: SharingParamDefault,
   sharing_offering: SharingParamDefault,
   sharing_class: SharingParamDefault,
   sharing_group: SharingParamDefault,
@@ -30,58 +31,59 @@ export function getParam(name:ParamName, _default:string="") {
   return params[name] || defaultParams[name] || _default;
 }
 
-export function updateHash() {
+export function updateHash(via:string) {
   window.location.hash = `${stringify(params)}`;
-  notifyChange();
+  notifyChange(via);
 }
 
 export function setParam(name:ParamName, value:any) {
   params[name] = value;
-  updateHash();
+  updateHash("setParam");
 }
 
-export function setParamsWithDefaults(_newparams:Params) {
+export function setParamsWithDefaults(_newparams:Params, via:string, skipUpdateHash:boolean = false) {
   Object.keys(defaultParams).forEach( (key:ParamName) => {
     const useDefault = _newparams[key] === undefined || _newparams[key] === null
     params[key] = useDefault ? defaultParams[key] : _newparams[key];
   });
-  updateHash();
+  if (!skipUpdateHash) {
+    updateHash(via);
+  }
 }
 
 
-export function setParams(_newparams:Params) {
+export function setParams(_newparams:Params, via:string) {
   Object.keys(_newparams).forEach( (key:ParamName) => {
     params[key] = _newparams[key];
   });
-  updateHash();
+  updateHash(via);
 }
 
 export function addParamChangeListener(callbackF:Function) {
   listeners.push(callbackF);
 }
 
-function notifyChange() {
-  listeners.forEach( (listener:Function) => listener());
+function notifyChange(via:string) {
+  listeners.forEach( (listener:Function) => listener(via));
 }
 
-function parseHashParams() {
-  setParamsWithDefaults(parse(window.location.hash));
-}
-
-export function paramsFromContext(context:Context) {
+export function paramsFromContext(context:Context, via:string) {
   setParams({
     sharing_offering: context.offering,
     sharing_group:    context.group,
     sharing_class:    context.class
-  })
+  }, via)
 }
 
-function paramsFromAddress() {
+function paramsFromAddress(via:string, skipUpdateHash:boolean = false) {
   if(! isEqual(params, parse(window.location.hash))) {
-    parseHashParams();
+    setParamsWithDefaults(parse(window.location.hash), via, skipUpdateHash);
   }
 }
 
-paramsFromAddress();
-window.addEventListener("onLoad", () => paramsFromAddress);
-window.addEventListener("hashchange", paramsFromAddress, false);
+// load from params if not in iframe
+const skipUpdateHash = window.top !== window.self;
+paramsFromAddress("direct call", skipUpdateHash);
+
+//window.addEventListener("onLoad", () => paramsFromAddress("onLoad"));
+//window.addEventListener("hashchange", () => paramsFromAddress("hashchange"), false);
