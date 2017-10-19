@@ -23,7 +23,7 @@ interface GeogApp {
 
 declare var firebase:Firebse;
 
-log("loading `sharing.ts`");
+//log("loading `sharing.ts`");
 
 export default class Sharing {
   context: Context;
@@ -40,12 +40,12 @@ export default class Sharing {
   setContext(_context:Context|null) {
     if(_context !== null) {
       this.context = _context;
-      paramsFromContext(_context);
-      log(_context);
+      paramsFromContext(_context, "setContext");
+      //log(_context);
       this.storageRefPath = `thumbnails/${escapeFirebaseKey(this.context.offering)}/${escapeFirebaseKey(this.context.group)}/${escapeFirebaseKey(this.context.class)}/${escapeFirebaseKey(this.context.id)}`;
     }
     else {
-      log("No context passed in 💀");
+      //log("No context passed in 💀");
     }
   }
 
@@ -72,7 +72,7 @@ export default class Sharing {
   }
 
   share() {
-    log(`✔ initiating sharing for ${name}`);
+    //log(`✔ initiating sharing for ${name}`);
     let publishing = false
     const app:SharableApp = {
       application: () => {
@@ -108,6 +108,6 @@ export default class Sharing {
       }
     }
     const sharePhone = new SharingClient({app});
-    log(`✔ sharing enabled for ${name}`);
+    //log(`✔ sharing enabled for ${name}`);
   }
 }
