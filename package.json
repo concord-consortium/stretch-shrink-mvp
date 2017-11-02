@@ -19,14 +19,22 @@
     "build": "webpack"
   },
   "dependencies": {
+    "@types/react": "^16.0.19",
+    "@types/react-dom": "^16.0.2",
+    "@types/superagent": "^3.5.6",
     "@types/uuid": "^3.4.2",
     "cc-sharing": "^1.0.12",
+    "firebase": "^4.6.0",
+    "jszip": "^3.1.4",
     "lodash": "^4.17.4",
     "query-string": "^5.0.0",
+    "react": "^16.0.0",
+    "react-dom": "^16.0.0",
+    "superagent": "^3.8.0",
     "uuid": "^3.1.0"
   },
   "devDependencies": {
-    "@types/lodash": "^4.14.74",
+    "@types/lodash": "^4.14.80",
     "@types/query-string": "^5.0.0",
     "awesome-typescript-loader": "^3.2.3",
     "copy-webpack-plugin": "^4.0.1",
