@@ -187,9 +187,13 @@ export class App extends React.Component<AppProps, AppState> {
       if (baseCoords !== null) {
         let dilatedCoords = [baseCoords[0] * dilationRules[0], baseCoords[1] * dilationRules[1]],
             transformedCoords = [dilatedCoords[0] + translationRules[0], dilatedCoords[1] + translationRules[1]];
-        updates[`${row}:${col}`] = `(${transformedCoords[0]}, ${transformedCoords[1]})`
+        updates[`${row}:${col}`] = `(${this.round(transformedCoords[0])}, ${this.round(transformedCoords[1])})`
       }
     }
+  }
+
+  round(n:number) {
+    return Math.round(n * 100) / 100
   }
 
   /*
