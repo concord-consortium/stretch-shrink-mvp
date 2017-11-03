@@ -34,7 +34,7 @@ export class ButtonStrip extends React.Component<ButtonStripProps, ButtonStripSt
     const clicked = () => {
       this.props.toggleVisibility(col)
     }
-    return <button key={col} disabled={!enabled} style={style} onClick={clicked}>Toggle Hat {col - 1} visiblity</button>
+    return <button key={col} disabled={!enabled} style={style} onClick={clicked}>Hide/Unhide Hat {col - 1}</button>
   }
 
   renderVisibilityButtons() {
@@ -55,9 +55,9 @@ export class ButtonStrip extends React.Component<ButtonStripProps, ButtonStripSt
   render() {
     return (
       <div id="buttons">
-        <button id="reset" onClick={this.handleReset}>Reset to Default</button>
         <button id="toggle-compare" style={{color: "red"}}>Toggle Comparison Mug</button>
         {this.renderVisibilityButtons()}
+        <button id="reset" onClick={this.handleReset}>Reset</button>
       </div>
     )
   }

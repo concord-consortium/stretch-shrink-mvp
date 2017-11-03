@@ -130,9 +130,14 @@ export class App extends React.Component<AppProps, AppState> {
   setCellValues(updates:any) {
     if (this.state.editable) {
       Object.keys(updates).forEach((key) => {
-        const [row, col] = key.split(":")
-        if ((col === "1") && (updates[key] !== this.state.data[key])) {
-          this.transformRow(parseInt(row), updates)
+        if (updates[key] !== this.state.data[key]) {
+          const [row, col] = key.split(":")
+          if (col === "1") {
+            this.transformRow(parseInt(row), updates)
+          }
+          else {
+            //this.updateTranslationRule(parseInt(col), updates)
+          }
         }
       })
       this.firebaseRef.update(updates)
@@ -164,9 +169,9 @@ export class App extends React.Component<AppProps, AppState> {
     return [xTranslation, yTranslation];
   }
 
-  getRowCoords(row:number, updates:any) {
+  getRowColValue(row:number, col:number, updates:any) {
     let coordRegex = /(\-?\d*\.?\d+),\s*(\-?\d*\.?\d+)/g,
-        point = updates[`${row}:1`] || this.state.data[`${row}:1`],
+        point = updates[`${row}:${col}`] || this.state.data[`${row}:${col}`],
         matches = coordRegex.exec(point) || [null, null],
         xCoord = matches[1],
         yCoord = matches[2];
@@ -178,7 +183,7 @@ export class App extends React.Component<AppProps, AppState> {
     for (let col = 2; col < this.cols; col++) {
       let dilationRules = this.getDilationRules(col),
           translationRules = this.getTranslationRules(col),
-          baseCoords = this.getRowCoords(row, updates)
+          baseCoords = this.getRowColValue(row, 1, updates)
       if (baseCoords !== null) {
         let dilatedCoords = [baseCoords[0] * dilationRules[0], baseCoords[1] * dilationRules[1]],
             transformedCoords = [dilatedCoords[0] + translationRules[0], dilatedCoords[1] + translationRules[1]];
@@ -186,6 +191,37 @@ export class App extends React.Component<AppProps, AppState> {
       }
     }
   }
+
+  /*
+  updateTranslationRule(col:number, updates:any) {
+    const mugCoords =  this.getRowColValue(3, 1, this.state.data)
+    const baseCoords = this.getRowColValue(3, col, updates)
+    const dilationRules = this.getDilationRules(col)
+
+    if (mugCoords && baseCoords) {
+      const newTranslationRules = [mugCoords[0] - baseCoords[0], mugCoords[1] - baseCoords[1]]
+      const xTransform = newTranslationRules[0] >= 0 ? dilationRules[0] + "x + " + newTranslationRules[0] : dilationRules[0] + "x - " + Math.abs(newTranslationRules[0])
+      const yTransform = newTranslationRules[1] >= 0 ? dilationRules[1] + "y + " + newTranslationRules[1] : dilationRules[1] + "y - " + Math.abs(newTranslationRules[1])
+
+      updates[``]
+
+    sheetApp.setTextValue(col + 2, "(" + xTransform + ", " + yTransform + ")");
+
+    pointNames.forEach(pointName => {
+      transformPoint(pointName);
+    });
+
+    makeMidpoints();
+    saveState();
+
+    restartListeners();
+
+
+      }
+
+    }
+  }
+  */
 
   toggleVisibility(col: number) {
     this.state.visibilityMap[col] = !this.state.visibilityMap[col]
