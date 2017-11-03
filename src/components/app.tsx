@@ -22,7 +22,7 @@ export class App extends React.Component<AppProps, AppState> {
   private firebaseRef: firebase.database.Reference
   private cols = 8
   private rows = 8
-  private spreadsheetId = "sA38WgGZ"
+  private spreadsheetId = "drDxNuma"
 
   constructor(props: AppProps) {
     super(props)
@@ -70,39 +70,99 @@ export class App extends React.Component<AppProps, AppState> {
     // hardcoded for now...
     let startingData:SpreadsheetData = {}
     let staticData:SpreadsheetData = {}
-    if (this.spreadsheetId === "sA38WgGZ") {
-      staticData = {
-        "0:0": "",
-        "0:1": "Mug's Hat",
-        "0:2": "Hat 1",
-        "0:3": "Hat 2",
-        "0:4": "Hat 3",
-        "0:5": "Hat 4",
-        "0:6": "Hat 5",
-        "0:7": "Hat 6",
-        "1:0": "",
-        "2:0": "A",
-        "3:0": "B",
-        "4:0": "C",
-        "5:0": "D",
-        "6:0": "E",
-        "7:0": "F"
-      }
-      startingData = {
-        "1:1": "(x,y)",
-        "1:2": "(x+2,y+3)",
-        "1:3": "(x-1,y+4)",
-        "1:4": "(x+2,3y)",
-        "1:5": "(.5x,.5y)",
-        "1:6": "(2x,3y)",
-        "1:7": "(x,y)",
-        "2:1": "(1,1)",
-        "3:1": "(9,1)",
-        "4:1": "(6,2)",
-        "5:1": "(6,3)",
-        "6:1": "(4,3)",
-        "7:1": "(4,2)",
-      }
+    switch (this.spreadsheetId) {
+      case "drDxNuma":
+        staticData = {
+          "0:0": "",
+          "0:1": "Mug's Hat",
+          "0:2": "Hat 1",
+          "0:3": "Hat 2",
+          "0:4": "Hat 3",
+          "0:5": "Hat 4",
+          "0:6": "Hat 5",
+          "0:7": "Hat 6",
+          "1:0": "",
+          "2:0": "A",
+          "3:0": "B",
+          "4:0": "C",
+          "5:0": "D",
+          "6:0": "E",
+          "7:0": "F"
+        }
+        startingData = {
+          "1:1": "(x,y)",
+          "1:2": "(x+2,y+3)",
+          "1:3": "(x-1,y+4)",
+          "1:4": "(x+2,3y)",
+          "1:5": "(.5x,.5y)",
+          "1:6": "(2x,3y)",
+          "1:7": "(x,y)",
+          "2:1": "(1,1)",
+          "3:1": "(9,1)",
+          "4:1": "(6,2)",
+          "5:1": "(6,3)",
+          "6:1": "(4,3)",
+          "7:1": "(4,2)",
+        }
+        break
+      case "kTTvUhdk":
+        staticData = {
+          "0:0": "",
+          "0:1": "Mug's Hat",
+          "0:2": "Hat 7",
+          "0:3": "Hat 8",
+          "0:4": "Hat 9",
+          "0:5": "Hat 10",
+          "0:6": "Hat 11",
+          "0:7": "Hat 12",
+          "1:0": "",
+          "2:0": "A",
+          "3:0": "B",
+          "4:0": "C",
+          "5:0": "D",
+          "6:0": "E",
+          "7:0": "F"
+        }
+        startingData = {
+          "1:1": "(x,y)",
+          "1:2": "(x,y)",
+          "1:3": "(x,y)",
+          "1:4": "(x,y)",
+          "1:5": "(x,y)",
+          "1:6": "(x,y)",
+          "1:7": "(x,y)",
+          "2:1": "(1,1)",
+          "3:1": "(9,1)",
+          "4:1": "(6,2)",
+          "5:1": "(6,3)",
+          "6:1": "(4,3)",
+          "7:1": "(4,2)",
+        }
+        break;
+      case "f2vq7hVq":
+        staticData = {
+          "0:0": "",
+          "0:1": "Mug's Hat",
+          "0:2": "Mug's New Hat",
+          "1:0": "",
+          "2:0": "A",
+          "3:0": "B",
+          "4:0": "C",
+          "5:0": "D",
+          "6:0": "E",
+          "7:0": "F"
+        }
+        startingData = {
+          "1:1": "(x,y)",
+          "1:2": "(x,y)",
+          "2:1": "(1,1)",
+          "3:1": "(9,1)",
+          "4:1": "(6,2)",
+          "5:1": "(6,3)",
+          "6:1": "(4,3)",
+          "7:1": "(4,2)",
+        }
+        break;
     }
     this.setState({startingData, staticData})
     callback()
