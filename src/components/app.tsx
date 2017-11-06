@@ -2,7 +2,7 @@ import * as React from "react"
 import { ButtonStrip } from "./button-strip"
 import { Spreadsheet, SpreadsheetData } from "./spreadsheet"
 import { GeogebraGrid, VisibilityMap } from "./geogebra-grid"
-import { assign } from "lodash"
+import { assign, clone } from "lodash"
 
 import * as firebase from "firebase"
 
@@ -16,11 +16,13 @@ export interface AppState {
   startingData: SpreadsheetData
   editable: boolean
   visibilityMap: VisibilityMap
+  startingVisibilityMap: VisibilityMap
   rulesOff: boolean
 }
 
 export class App extends React.Component<AppProps, AppState> {
-  private firebaseRef: firebase.database.Reference
+  private firebaseDataRef: firebase.database.Reference
+  private firebaseVisibilityRef: firebase.database.Reference
   private cols = 8
   private rows = 8
   private spreadsheetId = "EW26mQ35"
@@ -29,6 +31,7 @@ export class App extends React.Component<AppProps, AppState> {
     super(props)
     this.handleReset = this.handleReset.bind(this)
     this.firebaseDataChanged = this.firebaseDataChanged.bind(this)
+    this.firebaseVisibilityChanged = this.firebaseVisibilityChanged.bind(this)
     this.setCellValue = this.setCellValue.bind(this)
     this.setCellValues = this.setCellValues.bind(this)
     this.toggleVisibility = this.toggleVisibility.bind(this)
@@ -44,6 +47,7 @@ export class App extends React.Component<AppProps, AppState> {
       startingData: {},
       editable: false,
       visibilityMap: visibilityMap,
+      startingVisibilityMap: clone(visibilityMap),
       rulesOff: false
     }
     firebase.initializeApp({
@@ -57,15 +61,18 @@ export class App extends React.Component<AppProps, AppState> {
   }
 
   componentWillMount() {
-    this.firebaseRef = firebase.database().ref("spreadsheetTestData")
+    this.firebaseDataRef = firebase.database().ref("spreadsheetTestData/data")
+    this.firebaseVisibilityRef = firebase.database().ref("spreadsheetTestData/visibility")
     this.loadGeogebraData(() => {
-      this.firebaseRef.on("value", this.firebaseDataChanged)
+      this.firebaseDataRef.on("value", this.firebaseDataChanged)
+      this.firebaseVisibilityRef.on("value", this.firebaseVisibilityChanged)
       this.setState({editable: true})
     })
   }
 
   componentWillUnmount() {
-    this.firebaseRef.off("value", this.firebaseDataChanged)
+    this.firebaseDataRef.off("value", this.firebaseDataChanged)
+    this.firebaseVisibilityRef.off("value", this.firebaseVisibilityChanged)
   }
 
   loadGeogebraData(callback:Function) {
@@ -180,13 +187,23 @@ export class App extends React.Component<AppProps, AppState> {
     }
   }
 
+  firebaseVisibilityChanged(snapshot:firebase.database.DataSnapshot|null) {
+    if (snapshot) {
+      let newVisibilityMap = snapshot.val()
+      if (newVisibilityMap === null) {
+        newVisibilityMap = this.state.startingVisibilityMap
+      }
+      this.setState({visibilityMap: newVisibilityMap})
+    }
+  }
+
   setCellValue(key: string, value:string|null) {
     console.log(key)
     if (this.state.editable && !this.state.staticData[key]) {
       const updates:any = {}
       updates[key] = value
       this.checkUpdateForSideEffects(key, updates)
-      this.firebaseRef.update(updates)
+      this.firebaseDataRef.update(updates)
     }
   }
 
@@ -195,7 +212,7 @@ export class App extends React.Component<AppProps, AppState> {
       Object.keys(updates).forEach((key) => {
         this.checkUpdateForSideEffects(key, updates)
       })
-      this.firebaseRef.update(updates)
+      this.firebaseDataRef.update(updates)
     }
   }
 
@@ -315,12 +332,13 @@ export class App extends React.Component<AppProps, AppState> {
 
   toggleVisibility(col: number) {
     this.state.visibilityMap[col] = !this.state.visibilityMap[col]
-    this.setState({visibilityMap: this.state.visibilityMap})
+    //this.setState({visibilityMap: this.state.visibilityMap})
+    this.firebaseVisibilityRef.set(this.state.visibilityMap)
   }
 
   handleReset() {
     const data = assign({}, this.state.staticData, this.state.startingData)
-    this.firebaseRef.set(data)
+    this.firebaseDataRef.set(data)
   }
 
   render() {
@@ -331,6 +349,7 @@ export class App extends React.Component<AppProps, AppState> {
           cols={this.cols}
           data={this.state.data}
           handleReset={this.handleReset}
+          visibilityMap={this.state.visibilityMap}
           toggleVisibility={this.toggleVisibility}
         />
         <div id="appContainer">

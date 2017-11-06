@@ -1,5 +1,6 @@
 import * as React from "react"
 import { SpreadsheetData, getColRGB } from "./spreadsheet"
+import { VisibilityMap } from "./geogebra-grid"
 
 export interface ButtonStripProps {
   rows: number
@@ -7,6 +8,7 @@ export interface ButtonStripProps {
   handleReset: () => void
   data: SpreadsheetData
   toggleVisibility: (col: number) => void
+  visibilityMap: VisibilityMap
 }
 
 export interface ButtonStripState {
@@ -29,12 +31,13 @@ export class ButtonStrip extends React.Component<ButtonStripProps, ButtonStripSt
     return `${row}:${col}`
   }
 
-  renderButton(col:number, enabled:boolean) {
+  renderButton(col:number, visible:boolean, enabled:boolean) {
     const style = {color: getColRGB(col)}
     const clicked = () => {
       this.props.toggleVisibility(col)
     }
-    return <button key={col} disabled={!enabled} style={style} onClick={clicked}>Hide/Unhide Hat {col - 1}</button>
+    const prefix = visible ? "Hide" : "Unhide"
+    return <button key={col} disabled={!enabled} style={style} onClick={clicked}>{prefix} Hat {col - 1}</button>
   }
 
   renderVisibilityButtons() {
@@ -47,7 +50,7 @@ export class ButtonStrip extends React.Component<ButtonStripProps, ButtonStripSt
           enabled = typeof value !== undefined
         }
       }
-      buttons.push(this.renderButton(col, enabled))
+      buttons.push(this.renderButton(col, this.props.visibilityMap[col], enabled))
     }
     return <div id="visiblity-buttons">{buttons}</div>
   }

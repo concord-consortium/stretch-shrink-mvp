@@ -149,13 +149,13 @@ export class GeogebraGrid extends React.Component<GeogebraGridProps, GeogebraGri
         points.forEach((point) => {
           gridApp.evalCommand(`${point.name} = (${point.x},${point.y})`)
           gridApp.setLabelVisible(point.name, true)
-          gridApp.setVisible(point.name, this.props.visibilityMap[col])
+          gridApp.setVisible(point.name, visibilityMap[col])
         })
         const polyPoints = points.map((point) => point.name).join(",")
         const polyColor = getColColor(col)
         gridApp.evalCommand(`${polyName} = Polygon(${polyPoints})`)
         gridApp.setColor(polyName, polyColor.r, polyColor.g, polyColor.b)
-        gridApp.setVisible(polyName, this.props.visibilityMap[col])
+        gridApp.setVisible(polyName, visibilityMap[col])
         this.polyMap[polyName] = {name: polyName, points}
       }
       else {
