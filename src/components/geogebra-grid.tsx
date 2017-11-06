@@ -10,6 +10,7 @@ export interface GeogebraGridProps {
   rows: number
   cols: number
   data: SpreadsheetData
+  rulesOff: boolean
   setCellValues: (updates:any) => void
   visibilityMap: VisibilityMap
 }
@@ -100,8 +101,6 @@ export class GeogebraGrid extends React.Component<GeogebraGridProps, GeogebraGri
   ggbOnInit() {
     this.setState({inited: true}, () => {
       this.drawPolygons(this.props.data, this.props.visibilityMap)
-      gridApp.registerUpdateListener(this.updateListener)
-      gridApp.registerRemoveListener(this.removeListener)
     })
   }
 
@@ -126,6 +125,9 @@ export class GeogebraGrid extends React.Component<GeogebraGridProps, GeogebraGri
     if (!this.state.inited) {
       return
     }
+
+    gridApp.unregisterUpdateListener(this.updateListener)
+    gridApp.unregisterRemoveListener(this.removeListener)
 
     this.polyMap = {}
     this.pointMap = {}
@@ -167,6 +169,103 @@ export class GeogebraGrid extends React.Component<GeogebraGridProps, GeogebraGri
 
       pointSuffix += "'"
     }
+
+    this.makeMidpoints()
+
+    gridApp.registerUpdateListener(this.updateListener)
+    gridApp.registerRemoveListener(this.removeListener)
+  }
+
+  getMaxCoords(pointSuffix="") {
+    let maxX = 0
+    let maxY = 0
+
+    const poly = this.polyMap[`Poly${pointSuffix}`]
+    if (poly) {
+      poly.points.forEach((point) => {
+        maxX = Math.max(maxX, gridApp.getXcoord(point.name))
+        maxY = Math.max(maxY, gridApp.getYcoord(point.name))
+      })
+    }
+
+    return {maxX, maxY}
+  }
+
+  getDilationRules(col:number) {
+    let rulePair = this.props.data[`1:${col}`],
+        xRegex = /(\-?\d*\.?\d+)x/g,
+        yRegex = /(\-?\d*\.?\d+)y/g,
+        xMatch = xRegex.exec(rulePair),
+        yMatch = yRegex.exec(rulePair),
+        xDilation = xMatch ? parseFloat(xMatch[1]) : 1,
+        yDilation = yMatch ? parseFloat(yMatch[1]) : 1;
+
+    return {xDilation, yDilation};
+  }
+
+  makeMidpoints() {
+    if (this.props.rulesOff) {
+      return
+    }
+
+    let {maxX, maxY} = this.getMaxCoords("'")
+
+    gridApp.evalCommand("X_MID = (" + maxX/2 + ", " + maxY + ")");
+    gridApp.evalCommand("X_ZERO = (" + 0 + ", " + maxY + ")");
+    gridApp.evalCommand("Y_MID = (" + maxX + ", " + maxY/2 + ")");
+    gridApp.evalCommand("Y_ZERO = (" + maxX + ", " + 0 + ")");
+    gridApp.evalCommand("XY_MAX = (" + maxX + ", " + maxY + ")");
+
+    gridApp.setColor("X_MID", 255, 0, 0);
+    gridApp.setColor("Y_MID", 255, 0, 0);
+    gridApp.setColor("XY_MAX", 255, 0, 0);
+    gridApp.setVisible("X_ZERO", false);
+    gridApp.setVisible("Y_ZERO", false);
+
+    gridApp.evalCommand("TOP_SEG = Segment(X_ZERO, XY_MAX)");
+    gridApp.evalCommand("RIGHT_SEG = Segment(Y_ZERO, XY_MAX)");
+    gridApp.setLineStyle("TOP_SEG", 1);
+    gridApp.setLineStyle("RIGHT_SEG", 1);
+  }
+
+  firstHatExists() {
+    return !!(this.polyMap["Poly'"] && (this.polyMap["Poly'"].points.length > 2))
+  }
+
+  handleYMidPoint() {
+    if (this.firstHatExists()) {
+      let newX = gridApp.getXcoord("Y_MID")
+      let baseX = this.getMaxCoords().maxX
+      let newXDilation = Math.round(newX / baseX * 100) / 100
+      let yDilation = this.getDilationRules(2).yDilation
+      let rule = `(${newXDilation}x, ${yDilation}y)`
+      this.props.setCellValues({"1:2": rule})
+    }
+  }
+
+  handleXMidPoint() {
+    if (this.firstHatExists()) {
+      let newY = gridApp.getYcoord("X_MID")
+      let baseY = this.getMaxCoords().maxY
+      let newYDilation = Math.round(newY / baseY * 100) / 100
+      let xDilation = this.getDilationRules(2).xDilation
+      let rule = `(${xDilation}x, ${newYDilation}y)`
+      this.props.setCellValues({"1:2": rule})
+    }
+  }
+
+  handleXYMaxPoint() {
+    if (this.firstHatExists()) {
+      let dilation = this.getDilationRules(2)
+      let newX = gridApp.getXcoord("XY_MAX")
+      let base = this.getMaxCoords()
+      let scaleFactor = (newX / base.maxX) / dilation.xDilation
+      let xDilation =  Math.round((dilation.xDilation * scaleFactor) * 100) / 100
+      let yDilation = Math.round((dilation.yDilation * scaleFactor) * 100) / 100
+
+      let rule = `(${xDilation}x, ${yDilation}y)`
+      this.props.setCellValues({"1:2": rule})
+    }
   }
 
   round(n:number) {
@@ -174,19 +273,34 @@ export class GeogebraGrid extends React.Component<GeogebraGridProps, GeogebraGri
   }
 
   updateListener(objName:string) {
-    const poly = this.polyMap[objName]
-    if (poly && !this.ignoreUpdates) {
-      clearTimeout(this.updateTimeout)
-      this.updateTimeout = setTimeout(() => {
-        this.ignoreUpdates = true
-        const updates:any = {}
-        poly.points.forEach((point) => {
-          let [x, y] = [gridApp.getXcoord(point.name), gridApp.getYcoord(point.name)]
-          updates[this.getCellKey(point.row, point.col)] = `(${this.round(x)},${this.round(y)})`
-        })
-        this.props.setCellValues(updates)
-        this.ignoreUpdates = false
-      }, 250) as any
+    switch (objName) {
+      case "Y_MID":
+        this.handleYMidPoint()
+        break
+      case "X_MID":
+        this.handleXMidPoint()
+        break
+      case "XY_MAX":
+        this.handleXYMaxPoint()
+        break
+
+      default:
+        // update polygon in sheet
+        const poly = this.polyMap[objName]
+        if (poly && !this.ignoreUpdates) {
+          clearTimeout(this.updateTimeout)
+          this.updateTimeout = setTimeout(() => {
+            this.ignoreUpdates = true
+            const updates:any = {}
+            poly.points.forEach((point) => {
+              let [x, y] = [gridApp.getXcoord(point.name), gridApp.getYcoord(point.name)]
+              updates[this.getCellKey(point.row, point.col)] = `(${this.round(x)},${this.round(y)})`
+            })
+            this.props.setCellValues(updates)
+            this.ignoreUpdates = false
+          }, 250) as any
+        }
+        break
     }
   }
 

@@ -16,13 +16,14 @@ export interface AppState {
   startingData: SpreadsheetData
   editable: boolean
   visibilityMap: VisibilityMap
+  rulesOff: boolean
 }
 
 export class App extends React.Component<AppProps, AppState> {
   private firebaseRef: firebase.database.Reference
   private cols = 8
   private rows = 8
-  private spreadsheetId = "drDxNuma"
+  private spreadsheetId = "EW26mQ35"
 
   constructor(props: AppProps) {
     super(props)
@@ -42,7 +43,8 @@ export class App extends React.Component<AppProps, AppState> {
       staticData: {},
       startingData: {},
       editable: false,
-      visibilityMap: visibilityMap
+      visibilityMap: visibilityMap,
+      rulesOff: false
     }
     firebase.initializeApp({
       apiKey: "AIzaSyC6xLM2k-aYH62O9UeskD-C1OtFtkM58sw",
@@ -71,7 +73,7 @@ export class App extends React.Component<AppProps, AppState> {
     let startingData:SpreadsheetData = {}
     let staticData:SpreadsheetData = {}
     switch (this.spreadsheetId) {
-      case "drDxNuma":
+      case "EW26mQ35":
         staticData = {
           "0:0": "",
           "0:1": "Mug's Hat",
@@ -105,7 +107,7 @@ export class App extends React.Component<AppProps, AppState> {
           "7:1": "(4,2)",
         }
         break
-      case "kTTvUhdk":
+      case "fVtztHNs":
         staticData = {
           "0:0": "",
           "0:1": "Mug's Hat",
@@ -139,7 +141,7 @@ export class App extends React.Component<AppProps, AppState> {
           "7:1": "(4,2)",
         }
         break;
-      case "f2vq7hVq":
+      case "QtN5E2q4":
         staticData = {
           "0:0": "",
           "0:1": "Mug's Hat",
@@ -183,6 +185,7 @@ export class App extends React.Component<AppProps, AppState> {
     if (this.state.editable && !this.state.staticData[key]) {
       const updates:any = {}
       updates[key] = value
+      this.checkUpdateForSideEffects(key, updates)
       this.firebaseRef.update(updates)
     }
   }
@@ -190,53 +193,62 @@ export class App extends React.Component<AppProps, AppState> {
   setCellValues(updates:any) {
     if (this.state.editable) {
       Object.keys(updates).forEach((key) => {
-        if (updates[key] !== this.state.data[key]) {
-          const [row, col] = key.split(":")
-          if (col === "1") {
-            this.transformRow(parseInt(row), updates)
-          }
-          else {
-            //this.updateTranslationRule(parseInt(col), updates)
-          }
-        }
+        this.checkUpdateForSideEffects(key, updates)
       })
       this.firebaseRef.update(updates)
     }
   }
 
-  getDilationRules(col:number) {
-    let rulePair = this.state.data[`1:${col}`],
+  checkUpdateForSideEffects(key: string, updates:any) {
+    if (updates[key] !== this.state.data[key]) {
+      const [row, col] = key.split(":")
+      if (row === "1") {
+        this.applyRuleToUpdate(parseInt(col), updates)
+      }
+      else if (col === "1") {
+        this.transformRow(parseInt(row), updates)
+      }
+      else {
+        //this.updateTranslationRule(parseInt(col), updates[key])
+      }
+    }
+  }
+
+  getDilationRules(col:number, updates:any={}) {
+    let key = `1:${col}`,
+        rulePair = updates[key] || this.state.data[key],
         xRegex = /(\-?\d*\.?\d+)x/g,
         yRegex = /(\-?\d*\.?\d+)y/g,
         xMatch = xRegex.exec(rulePair),
         yMatch = yRegex.exec(rulePair),
-        xDilation = xMatch ? parseFloat(xMatch[1]) : 1,
-        yDilation = yMatch ? parseFloat(yMatch[1]) : 1;
+        x = xMatch ? parseFloat(xMatch[1]) : 1,
+        y = yMatch ? parseFloat(yMatch[1]) : 1;
 
-    return [xDilation, yDilation];
+    return {x, y}
   }
 
-  getTranslationRules(col:number) {
-    let rulePair = this.state.data[`1:${col}`],
+  getTranslationRules(col:number, updates:any={}) {
+    let key = `1:${col}`,
+        rulePair = updates[key] || this.state.data[key],
         xRegex = /x\s*(\-|\+)\s*(\d*\.?\d+)/g,
         yRegex = /y\s*(\-|\+)\s*(\d*\.?\d+)/g,
         xMatch = xRegex.exec(rulePair),
         yMatch = yRegex.exec(rulePair),
         // Grab the parsed sign and number for translation rule
-        xTranslation = xMatch ? parseFloat(xMatch[1] + xMatch[2]) : 0,
-        yTranslation = yMatch ? parseFloat(yMatch[1] + yMatch[2]) : 0;
+        x = xMatch ? parseFloat(xMatch[1] + xMatch[2]) : 0,
+        y = yMatch ? parseFloat(yMatch[1] + yMatch[2]) : 0;
 
-    return [xTranslation, yTranslation];
+    return {x, y}
   }
 
-  getRowColValue(row:number, col:number, updates:any) {
+  getRowColValue(row:number, col:number, updates:any={}) {
     let coordRegex = /(\-?\d*\.?\d+),\s*(\-?\d*\.?\d+)/g,
         point = updates[`${row}:${col}`] || this.state.data[`${row}:${col}`],
         matches = coordRegex.exec(point) || [null, null],
         xCoord = matches[1],
         yCoord = matches[2];
 
-    return (xCoord !== null) && (yCoord !== null) ? [parseFloat(xCoord), parseFloat(yCoord)] : null;
+    return (xCoord !== null) && (yCoord !== null) ? {x: parseFloat(xCoord), y: parseFloat(yCoord)} : null;
   }
 
   transformRow(row:number, updates:any) {
@@ -245,15 +257,29 @@ export class App extends React.Component<AppProps, AppState> {
           translationRules = this.getTranslationRules(col),
           baseCoords = this.getRowColValue(row, 1, updates)
       if (baseCoords !== null) {
-        let dilatedCoords = [baseCoords[0] * dilationRules[0], baseCoords[1] * dilationRules[1]],
-            transformedCoords = [dilatedCoords[0] + translationRules[0], dilatedCoords[1] + translationRules[1]];
-        updates[`${row}:${col}`] = `(${this.round(transformedCoords[0])}, ${this.round(transformedCoords[1])})`
+        let dilatedCoords = {x: baseCoords.x * dilationRules.x, y: baseCoords.y * dilationRules.y},
+            transformedCoords = {x: dilatedCoords.x + translationRules.x, y: dilatedCoords.y + translationRules.y};
+        updates[`${row}:${col}`] = `(${this.round(transformedCoords.x)}, ${this.round(transformedCoords.y)})`
       }
     }
   }
 
   round(n:number) {
     return Math.round(n * 100) / 100
+  }
+
+  applyRuleToUpdate(col:number, updates:any) {
+    const dialation = this.getDilationRules(col, updates)
+    const translation = this.getTranslationRules(col, updates)
+
+    for (let row = 2; row < this.rows; row++) {
+      const hat = this.getRowColValue(row, 1)
+      if (hat) {
+        const newX = this.round((hat.x * dialation.x) + translation.x)
+        const newY = this.round((hat.y * dialation.y) + translation.y)
+        updates[`${row}:${col}`] = `(${newX},${newY})`
+      }
+    }
   }
 
   /*
@@ -316,6 +342,7 @@ export class App extends React.Component<AppProps, AppState> {
               staticData={this.state.staticData}
               startingData={this.state.startingData}
               setCellValue={this.setCellValue}
+              rulesOff={this.state.rulesOff}
             />
           <GeogebraGrid
             data={this.state.data}
@@ -324,6 +351,7 @@ export class App extends React.Component<AppProps, AppState> {
             id="c23xKskj"
             setCellValues={this.setCellValues}
             visibilityMap={this.state.visibilityMap}
+            rulesOff={this.state.rulesOff}
           />
         </div>
       </div>

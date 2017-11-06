@@ -160,6 +160,7 @@ export interface SpreadsheetProps {
   staticData: SpreadsheetData
   startingData: SpreadsheetData
   editable: boolean
+  rulesOff: boolean
   setCellValue: (key: string, value: string|null) => void
 }
 
