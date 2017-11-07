@@ -22,6 +22,7 @@ export interface GeogebraGridState {
 export interface VisibilityMap {
   [key: number]: boolean
 }
+export const ComparisonVisibilityIndex = 0
 
 export interface Point {
   name: string,
@@ -172,6 +173,8 @@ export class GeogebraGrid extends React.Component<GeogebraGridProps, GeogebraGri
 
     this.makeMidpoints()
 
+    this.showBaseComparison()
+
     gridApp.registerUpdateListener(this.updateListener)
     gridApp.registerRemoveListener(this.removeListener)
   }
@@ -265,6 +268,26 @@ export class GeogebraGrid extends React.Component<GeogebraGridProps, GeogebraGri
 
       let rule = `(${xDilation}x, ${yDilation}y)`
       this.props.setCellValues({"1:2": rule})
+    }
+  }
+
+  showBaseComparison() {
+    const visible = this.props.visibilityMap[ComparisonVisibilityIndex]
+
+    if (visible) {
+      const polygon = this.polyMap["Poly"]
+      const polyPoints = polygon.points.map((point) => `(${point.x},${point.y})`).join(",")
+      const copyPolyCommand = `PolyCopy = Polygon(${polyPoints})`
+
+      //let lastCoords = getPointCoords(pointNames[pointNames.length - 1]);
+      //copyPolyCommand += "(" + lastCoords[0] + ", " + lastCoords[1] + "))";
+
+      gridApp.evalCommand(copyPolyCommand);
+      let color = getColColor(1)
+      gridApp.setColor("PolyCopy", color.r, color.g, color.b);
+      gridApp.setVisible("PolyCopy", true);
+    } else {
+      gridApp.setVisible("PolyCopy", false);
     }
   }
 

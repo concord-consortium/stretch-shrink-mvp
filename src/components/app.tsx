@@ -1,7 +1,7 @@
 import * as React from "react"
 import { ButtonStrip } from "./button-strip"
 import { Spreadsheet, SpreadsheetData } from "./spreadsheet"
-import { GeogebraGrid, VisibilityMap } from "./geogebra-grid"
+import { GeogebraGrid, VisibilityMap, ComparisonVisibilityIndex } from "./geogebra-grid"
 import { assign, clone } from "lodash"
 
 import * as firebase from "firebase"
@@ -38,7 +38,7 @@ export class App extends React.Component<AppProps, AppState> {
 
     const visibilityMap:VisibilityMap = {}
     for (let col=0; col < this.cols; col++) {
-      visibilityMap[col] = true
+      visibilityMap[col] = col === ComparisonVisibilityIndex ? false : true
     }
 
     this.state = {
@@ -339,6 +339,7 @@ export class App extends React.Component<AppProps, AppState> {
   handleReset() {
     const data = assign({}, this.state.staticData, this.state.startingData)
     this.firebaseDataRef.set(data)
+    this.firebaseVisibilityRef.set(this.state.startingVisibilityMap)
   }
 
   render() {

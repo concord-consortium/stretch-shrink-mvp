@@ -1,6 +1,6 @@
 import * as React from "react"
 import { SpreadsheetData, getColRGB } from "./spreadsheet"
-import { VisibilityMap } from "./geogebra-grid"
+import { VisibilityMap, ComparisonVisibilityIndex } from "./geogebra-grid"
 
 export interface ButtonStripProps {
   rows: number
@@ -40,6 +40,15 @@ export class ButtonStrip extends React.Component<ButtonStripProps, ButtonStripSt
     return <button key={col} disabled={!enabled} style={style} onClick={clicked}>{prefix} Hat {col - 1}</button>
   }
 
+  renderComparisonButton() {
+    const visible = this.props.visibilityMap[ComparisonVisibilityIndex]
+    const prefix = visible ? "Hide" : "Unhide"
+    const clicked = () => {
+      this.props.toggleVisibility(0)
+    }
+    return <button id="toggle-compare" onClick={clicked}>{prefix} Comparison Mug</button>
+  }
+
   renderVisibilityButtons() {
     const buttons:JSX.Element[] = []
     for (let col = 2; col < this.props.cols; col++) {
@@ -58,7 +67,7 @@ export class ButtonStrip extends React.Component<ButtonStripProps, ButtonStripSt
   render() {
     return (
       <div id="buttons">
-        <button id="toggle-compare" style={{color: "red"}}>Toggle Comparison Mug</button>
+        {this.renderComparisonButton()}
         {this.renderVisibilityButtons()}
         <button id="reset" onClick={this.handleReset}>Reset</button>
       </div>
