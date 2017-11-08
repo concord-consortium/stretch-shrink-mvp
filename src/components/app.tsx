@@ -3,8 +3,32 @@ import { ButtonStrip } from "./button-strip"
 import { Spreadsheet, SpreadsheetData } from "./spreadsheet"
 import { GeogebraGrid, VisibilityMap, ComparisonVisibilityIndex } from "./geogebra-grid"
 import { assign, clone } from "lodash"
+import { parse } from "query-string"
+import { Context, Identifier, SharingParams, SharingParamName, SharingParamDefault, escapeFirebaseKey } from 'cc-sharing'
 
 import * as firebase from "firebase"
+
+interface Params extends SharingParams {
+  sheetId: string
+  gridId: string
+  rulesOff: boolean
+}
+
+type ParamName = SharingParamName |
+  "sheetId" |
+  "gridId" |
+  "rulesOff"
+
+const defaultParams = {
+  sharing_publication: SharingParamDefault,
+  sharing_offering: SharingParamDefault,
+  sharing_class: SharingParamDefault,
+  sharing_group: SharingParamDefault,
+  sharing_clone: SharingParamDefault,
+  sheetId: "EW26mQ35",
+  gridId: "c23xKskj",
+  rulesOff: false
+}
 
 export interface AppProps {
 
@@ -18,6 +42,13 @@ export interface AppState {
   visibilityMap: VisibilityMap
   startingVisibilityMap: VisibilityMap
   rulesOff: boolean
+  sheetId: string
+  gridId: string
+  sharing_publication: string
+  sharing_offering: string
+  sharing_class: string
+  sharing_group: string
+  sharing_clone: string
 }
 
 export class App extends React.Component<AppProps, AppState> {
@@ -25,7 +56,6 @@ export class App extends React.Component<AppProps, AppState> {
   private firebaseVisibilityRef: firebase.database.Reference
   private cols = 8
   private rows = 8
-  private spreadsheetId = "EW26mQ35"
 
   constructor(props: AppProps) {
     super(props)
@@ -48,7 +78,14 @@ export class App extends React.Component<AppProps, AppState> {
       editable: false,
       visibilityMap: visibilityMap,
       startingVisibilityMap: clone(visibilityMap),
-      rulesOff: false
+      rulesOff: defaultParams.rulesOff,
+      gridId: defaultParams.gridId,
+      sheetId: defaultParams.sheetId,
+      sharing_publication: SharingParamDefault,
+      sharing_offering: SharingParamDefault,
+      sharing_class: SharingParamDefault,
+      sharing_group: SharingParamDefault,
+      sharing_clone: SharingParamDefault,
     }
     firebase.initializeApp({
       apiKey: "AIzaSyC6xLM2k-aYH62O9UeskD-C1OtFtkM58sw",
@@ -61,12 +98,16 @@ export class App extends React.Component<AppProps, AppState> {
   }
 
   componentWillMount() {
-    this.firebaseDataRef = firebase.database().ref("spreadsheetTestData/data")
-    this.firebaseVisibilityRef = firebase.database().ref("spreadsheetTestData/visibility")
-    this.loadGeogebraData(() => {
-      this.firebaseDataRef.on("value", this.firebaseDataChanged)
-      this.firebaseVisibilityRef.on("value", this.firebaseVisibilityChanged)
-      this.setState({editable: true})
+    this.parseParams()
+    this.checkForCloneOnLoad(() => {
+      const baseUrl = this.getBaseUrl()
+      this.firebaseDataRef = firebase.database().ref(`${baseUrl}/data`)
+      this.firebaseVisibilityRef = firebase.database().ref(`${baseUrl}/visibility`)
+      this.loadGeogebraData(() => {
+        this.firebaseDataRef.on("value", this.firebaseDataChanged)
+        this.firebaseVisibilityRef.on("value", this.firebaseVisibilityChanged)
+        this.setState({editable: true})
+      })
     })
   }
 
@@ -75,11 +116,78 @@ export class App extends React.Component<AppProps, AppState> {
     this.firebaseVisibilityRef.off("value", this.firebaseVisibilityChanged)
   }
 
+  parseParams() {
+    const hashParams:Params = parse(window.location.hash)
+    Object.keys(defaultParams).forEach( (key:ParamName) => {
+      if (hashParams[key] === undefined || hashParams[key] === null) {
+        hashParams[key] = defaultParams[key]
+      }
+    })
+    this.setState(hashParams as AppState)
+  }
+
+  isClone() {
+    return this.state.sharing_clone !== SharingParamDefault
+  }
+
+  isPublication() {
+    return this.state.sharing_publication !== SharingParamDefault
+  }
+
+  checkForCloneOnLoad(callback:Function) {
+    if (this.isClone()) {
+      const cloneRef = firebase.database().ref(this.getCloneUrl());
+      cloneRef.once("value", function (cloneSnapshot) {
+        if (!cloneSnapshot.val()) {
+          // clone has no value so copy the base data into it
+          this.cloneData(cloneRef, callback);
+        }
+        else {
+          callback();
+        }
+      });
+    }
+    else {
+      callback();
+    }
+  }
+
+  cloneData(cloneRef:firebase.database.Reference, callback:Function) {
+    const baseRef = firebase.database().ref(this.getBaseUrl(true));
+    baseRef.once("value", function (baseSnapshot) {
+      const data = baseSnapshot.val();
+      cloneRef.set(data);
+      if (callback) {
+        callback();
+      }
+    });
+  }
+
+  getBaseUrl(forceNonCloneUrl?:boolean) {
+    const offeringId = escapeFirebaseKey(this.state.sharing_offering),
+          groupId = escapeFirebaseKey(this.state.sharing_group),
+          classId = escapeFirebaseKey(this.state.sharing_class)
+
+    if (!this.isClone() || forceNonCloneUrl) {
+      if (this.isPublication()) {
+        return `publications/${this.state.sharing_publication}`
+      }
+      const baseUrl = `classes/${classId}/groups/${groupId}/offerings/${offeringId}`
+      //console.log("Mugwumps BaseUrl:", baseUrl);
+      return baseUrl
+    }
+    return this.getCloneUrl()
+  }
+
+  getCloneUrl() {
+    return `clones/${this.state.sharing_clone}`;
+  }
+
   loadGeogebraData(callback:Function) {
     // hardcoded for now...
     let startingData:SpreadsheetData = {}
     let staticData:SpreadsheetData = {}
-    switch (this.spreadsheetId) {
+    switch (this.state.sheetId) {
       case "EW26mQ35":
         staticData = {
           "0:0": "",
@@ -197,8 +305,7 @@ export class App extends React.Component<AppProps, AppState> {
     }
   }
 
-  setCellValue(key: string, value:string|null) {
-    console.log(key)
+  setCellValue(key: string, value:string|null, ignoreSideEffects:boolean=false) {
     if (this.state.editable && !this.state.staticData[key]) {
       const updates:any = {}
       updates[key] = value
@@ -224,9 +331,6 @@ export class App extends React.Component<AppProps, AppState> {
       }
       else if (col === "1") {
         this.transformRow(parseInt(row), updates)
-      }
-      else {
-        //this.updateTranslationRule(parseInt(col), updates[key])
       }
     }
   }
@@ -299,37 +403,6 @@ export class App extends React.Component<AppProps, AppState> {
     }
   }
 
-  /*
-  updateTranslationRule(col:number, updates:any) {
-    const mugCoords =  this.getRowColValue(3, 1, this.state.data)
-    const baseCoords = this.getRowColValue(3, col, updates)
-    const dilationRules = this.getDilationRules(col)
-
-    if (mugCoords && baseCoords) {
-      const newTranslationRules = [mugCoords[0] - baseCoords[0], mugCoords[1] - baseCoords[1]]
-      const xTransform = newTranslationRules[0] >= 0 ? dilationRules[0] + "x + " + newTranslationRules[0] : dilationRules[0] + "x - " + Math.abs(newTranslationRules[0])
-      const yTransform = newTranslationRules[1] >= 0 ? dilationRules[1] + "y + " + newTranslationRules[1] : dilationRules[1] + "y - " + Math.abs(newTranslationRules[1])
-
-      updates[``]
-
-    sheetApp.setTextValue(col + 2, "(" + xTransform + ", " + yTransform + ")");
-
-    pointNames.forEach(pointName => {
-      transformPoint(pointName);
-    });
-
-    makeMidpoints();
-    saveState();
-
-    restartListeners();
-
-
-      }
-
-    }
-  }
-  */
-
   toggleVisibility(col: number) {
     this.state.visibilityMap[col] = !this.state.visibilityMap[col]
     //this.setState({visibilityMap: this.state.visibilityMap})
@@ -368,7 +441,7 @@ export class App extends React.Component<AppProps, AppState> {
             data={this.state.data}
             rows={this.rows}
             cols={this.cols}
-            id="c23xKskj"
+            id={this.state.gridId}
             setCellValues={this.setCellValues}
             visibilityMap={this.state.visibilityMap}
             rulesOff={this.state.rulesOff}
