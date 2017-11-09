@@ -7,14 +7,12 @@ const CopyWebpackPlugin = require("copy-webpack-plugin");
 
 module.exports = {
   entry: {
-    'index': ["./src/main.js"],
+    'index': ["./src/app.tsx"],
   },
 
   output: {
     path: path.resolve(__dirname, "dist"),
     filename: "[name].js",
-    libraryTarget: "var",
-    library: "MugWump"
   },
   resolve: {
     extensions: [".webpack.js", ".web.js", ".ts", ".tsx", ".js"]

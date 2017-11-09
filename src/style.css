@@ -10,3 +10,63 @@
 #buttons {
   display: flex;
 }
+#buttons #toggle-compare {
+  color: #f00;
+  margin-right: 20px;
+}
+#buttons #reset {
+  margin-left: 20px;
+}
+
+.spreadsheet table {
+  border-collapse: collapse;
+  user-select: none;
+  background-color: #fff;
+  width: 500px;
+}
+.spreadsheet table tr {
+  display: table-row;
+}
+.spreadsheet table td.col-header {
+  text-align: center;
+  background-color: #f8f8f8;
+  padding: 2px 5px;
+  border: 1px solid #ccc;
+}
+.spreadsheet table td.row-header {
+  width: 25px;
+  text-align: center;
+  background-color: #f8f8f8;
+  padding: 2px 5px;
+  border: 1px solid #ccc;
+}
+.spreadsheet table td {
+  width: 75px;
+  height: 25px;
+  max-width: 75px;
+  padding: 3px 5px;
+  border: 1px solid #ccc;
+  cursor: pointer;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 11px;
+}
+.spreadsheet table td.col-0 {
+  width: 20px;
+  text-align: center;
+}
+.spreadsheet table td.current-cell {
+  background-color: #D6E0F5;
+}
+.spreadsheet table td.editing-cell input {
+  width: 50px;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  outline: none;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 11px;
+}

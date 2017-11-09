@@ -1,35 +1,13 @@
-
 <!DOCTYPE html>
 <html>
   <head>
     <title>GeoGebra and JavaScript</title>
-    <script src="https://www.gstatic.com/firebasejs/4.3.0/firebase.js"></script>
-    <script>
-      // Initialize Firebase
-      var config = {
-        apiKey: "AIzaSyC6xLM2k-aYH62O9UeskD-C1OtFtkM58sw",
-        authDomain: "stretch-shrink.firebaseapp.com",
-        databaseURL: "https://stretch-shrink.firebaseio.com",
-        projectId: "stretch-shrink",
-        storageBucket: "stretch-shrink.appspot.com",
-        messagingSenderId: "616775738467"
-      };
-      firebase.initializeApp(config);
-    </script>
     <script src="https://cdn.geogebra.org/apps/deployggb.js"></script>
     <script src="index.js" defer='true'></script>
     <link rel="stylesheet" type="text/css" href="style.css">
   </head>
 
   <body>
-    <div id="buttons">
-      <button id="reset">Reset to Default</button>
-      <button id="toggle-compare"  style="color: red">Toggle Comparison Mug</button>
-      <div id="visiblity-buttons"></div>
-    </div>
-    <div id="appContainer">
-        <div id="sheetApp"></div>
-        <div id="gridApp"></div>
-      </div>
+    <div id="app" />
   </body>
 </html>
