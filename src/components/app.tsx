@@ -485,6 +485,12 @@ export class App extends React.Component<AppProps, AppState> {
     }
   }
 
+  hasRules(col:number, updates:any={}) {
+    let key = `1:${col}`,
+        rulePair = updates[key] || this.state.data[key] || ""
+    return rulePair.replace(/\s/, "").length > 0
+  }
+
   getDilationRules(col:number, updates:any={}) {
     let key = `1:${col}`,
         rulePair = updates[key] || this.state.data[key],
@@ -524,10 +530,11 @@ export class App extends React.Component<AppProps, AppState> {
 
   transformRow(row:number, updates:any) {
     for (let col = 2; col < this.cols; col++) {
-      let dilationRules = this.getDilationRules(col),
+      let hasRules = this.hasRules(col),
+          dilationRules = this.getDilationRules(col),
           translationRules = this.getTranslationRules(col),
           baseCoords = this.getRowColValue(row, 1, updates)
-      if (baseCoords !== null) {
+      if (hasRules && (baseCoords !== null)) {
         let dilatedCoords = {x: baseCoords.x * dilationRules.x, y: baseCoords.y * dilationRules.y},
             transformedCoords = {x: dilatedCoords.x + translationRules.x, y: dilatedCoords.y + translationRules.y};
         updates[`${row}:${col}`] = `(${this.round(transformedCoords.x)}, ${this.round(transformedCoords.y)})`
