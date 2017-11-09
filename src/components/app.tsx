@@ -3,15 +3,21 @@ import { ButtonStrip } from "./button-strip"
 import { Spreadsheet, SpreadsheetData } from "./spreadsheet"
 import { GeogebraGrid, VisibilityMap, ComparisonVisibilityIndex } from "./geogebra-grid"
 import { assign, clone } from "lodash"
-import { parse } from "query-string"
-import { Context, Identifier, SharingParams, SharingParamName, SharingParamDefault, escapeFirebaseKey } from 'cc-sharing'
+import { parse, stringify } from "query-string"
+import { v1 as uuid  } from "uuid"
+import * as queryString from "query-string"
+import { SharingClient, SharableApp, Representation, Png, Context, Identifier, SharingParams, SharingParamName, SharingParamDefault, escapeFirebaseKey } from 'cc-sharing'
+
+declare var gridApp:any
 
 import * as firebase from "firebase"
+const domToImage = require("dom-to-image")
 
 interface Params extends SharingParams {
+  sharing_id: string
   sheetId: string
   gridId: string
-  rulesOff: boolean
+  rulesOff: boolean|string
 }
 
 type ParamName = SharingParamName |
@@ -24,6 +30,7 @@ const defaultParams = {
   sharing_offering: SharingParamDefault,
   sharing_class: SharingParamDefault,
   sharing_group: SharingParamDefault,
+  sharing_id: SharingParamDefault,
   sharing_clone: SharingParamDefault,
   sheetId: "EW26mQ35",
   gridId: "c23xKskj",
@@ -48,6 +55,7 @@ export interface AppState {
   sharing_offering: string
   sharing_class: string
   sharing_group: string
+  sharing_id: string
   sharing_clone: string
 }
 
@@ -56,6 +64,7 @@ export class App extends React.Component<AppProps, AppState> {
   private firebaseVisibilityRef: firebase.database.Reference
   private cols = 8
   private rows = 8
+  private sharePhone: SharingClient
 
   constructor(props: AppProps) {
     super(props)
@@ -85,6 +94,7 @@ export class App extends React.Component<AppProps, AppState> {
       sharing_offering: SharingParamDefault,
       sharing_class: SharingParamDefault,
       sharing_group: SharingParamDefault,
+      sharing_id: SharingParamDefault,
       sharing_clone: SharingParamDefault,
     }
     firebase.initializeApp({
@@ -98,15 +108,16 @@ export class App extends React.Component<AppProps, AppState> {
   }
 
   componentWillMount() {
-    this.parseParams()
-    this.checkForCloneOnLoad(() => {
-      const baseUrl = this.getBaseUrl()
-      this.firebaseDataRef = firebase.database().ref(`${baseUrl}/data`)
-      this.firebaseVisibilityRef = firebase.database().ref(`${baseUrl}/visibility`)
-      this.loadGeogebraData(() => {
-        this.firebaseDataRef.on("value", this.firebaseDataChanged)
-        this.firebaseVisibilityRef.on("value", this.firebaseVisibilityChanged)
-        this.setState({editable: true})
+    this.getParams(() => {
+      this.checkForCloneOnLoad(() => {
+        const baseUrl = this.getBaseUrl()
+        this.firebaseDataRef = firebase.database().ref(`${baseUrl}/data`)
+        this.firebaseVisibilityRef = firebase.database().ref(`${baseUrl}/visibility`)
+        this.loadGeogebraData(() => {
+          this.firebaseDataRef.on("value", this.firebaseDataChanged)
+          this.firebaseVisibilityRef.on("value", this.firebaseVisibilityChanged)
+          this.setState({editable: true})
+        })
       })
     })
   }
@@ -116,14 +127,144 @@ export class App extends React.Component<AppProps, AppState> {
     this.firebaseVisibilityRef.off("value", this.firebaseVisibilityChanged)
   }
 
-  parseParams() {
-    const hashParams:Params = parse(window.location.hash)
+  inIframe() {
+    try {
+      return window.self !== window.top
+    } catch (e) {
+      return true
+    }
+  }
+
+  getParams(callback:Function) {
+    const params:Params = parse(window.location.hash)
     Object.keys(defaultParams).forEach( (key:ParamName) => {
-      if (hashParams[key] === undefined || hashParams[key] === null) {
-        hashParams[key] = defaultParams[key]
+      if (params[key] === undefined || params[key] === null) {
+        params[key] = defaultParams[key]
       }
     })
-    this.setState(hashParams as AppState)
+    params.rulesOff = params.rulesOff === "true"
+    this.setParams(params, () => {
+      if (this.inIframe() && !this.isClone()) {
+        this.setupSharing(callback)
+      }
+      else {
+        callback()
+      }
+    })
+  }
+
+  setParams(params:any, callback?:Function) {
+    this.setState(params, () => {
+      window.location.hash = stringify(params)
+      if (callback) {
+        callback()
+      }
+    })
+  }
+
+  setupSharing(done:Function) {
+    const self = this
+    let storageRefPath: string
+
+    const paramsWithoutSharing = () => {
+      return {
+        sheetId: this.state.sheetId,
+        gridId: this.state.gridId,
+        rulesOff: this.state.rulesOff
+      }
+    }
+
+    const saveImage = (name: string, base64PNG:string, resolve:Function, reject:Function) => {
+      const filename = `${storageRefPath}/${name}.png`
+      var storageRef = firebase.storage().ref()
+      var fileRef = storageRef.child(filename)
+      if (base64PNG) {
+        fileRef.putString(base64PNG, 'base64', {contentType:'image/png'}).then((results) => {
+          resolve({type: Png, dataUrl: results.downloadURL, name:'stretch and shrink'})
+        });
+      }
+      else {
+        reject("Couldn't create firebase file from canvas base64PNG");
+      }
+    }
+
+    let publishing = false
+    const app:SharableApp = {
+      application: () => {
+        let launchUrl = window.location.href
+        if (publishing) {
+          // save a copy of the current firebase data into a cloned session
+          const publicationId = uuid()
+          const publishRef = firebase.database().ref(`publications/${publicationId}`)
+          this.cloneData(publishRef)
+
+          // remove all the sharing params and add the publication id
+          const params:any = paramsWithoutSharing()
+          params.sharing_publication = publicationId
+          const a = document.createElement("a")
+          a.href = launchUrl
+          a.hash = queryString.stringify(params)
+          launchUrl = a.toString()
+
+          publishing = false
+        }
+        return {
+          launchUrl: launchUrl,
+          name: "MugWumps"
+        }
+      },
+
+      getDataFunc: (context:Context|null) => {
+        publishing = true
+
+        const gridPromise = new Promise<Representation>((resolve, reject) => {
+          gridApp.getScreenshotBase64((base64PNG:string) => {
+            saveImage("grid", base64PNG, resolve, reject)
+          })
+        })
+
+        const sheetPromise = new Promise<Representation>((resolve, reject) => {
+          self.getSpreadsheetImage((base64PNG:string) => {
+            saveImage("spreadsheet", base64PNG, resolve, reject)
+          })
+        })
+
+        return Promise.all([gridPromise, sheetPromise]);
+      },
+
+      initCallback: (context:Context) => {
+        storageRefPath = `thumbnails/${escapeFirebaseKey(context.offering)}/${escapeFirebaseKey(context.group)}/${escapeFirebaseKey(context.class)}/${escapeFirebaseKey(context.id)}`
+        self.setParams({
+          sharing_id:       context.id as string,
+          sharing_offering: context.offering as string,
+          sharing_group:    context.group as string,
+          sharing_class:    context.class as string
+        }, done)
+      }
+    }
+
+    this.sharePhone = new SharingClient({app})
+  }
+
+  getSpreadsheetImage(callback:(image:string) => void) {
+    const spreadsheet = document.getElementById("spreadsheet")
+    if (spreadsheet) {
+      const options = {
+        width: spreadsheet.clientWidth,
+        height: spreadsheet.clientHeight
+      }
+      domToImage
+        .toPng(spreadsheet)
+        .then((dataUrl:string) => {
+          callback(dataUrl.replace(/^data:image\/png;base64,/, ""))
+        })
+        .catch((error:any) => {
+          callback("")
+        });
+    }
+    else {
+      callback("")
+    }
   }
 
   isClone() {
@@ -137,7 +278,7 @@ export class App extends React.Component<AppProps, AppState> {
   checkForCloneOnLoad(callback:Function) {
     if (this.isClone()) {
       const cloneRef = firebase.database().ref(this.getCloneUrl());
-      cloneRef.once("value", function (cloneSnapshot) {
+      cloneRef.once("value", (cloneSnapshot) => {
         if (!cloneSnapshot.val()) {
           // clone has no value so copy the base data into it
           this.cloneData(cloneRef, callback);
@@ -152,9 +293,9 @@ export class App extends React.Component<AppProps, AppState> {
     }
   }
 
-  cloneData(cloneRef:firebase.database.Reference, callback:Function) {
+  cloneData(cloneRef:firebase.database.Reference, callback?:Function) {
     const baseRef = firebase.database().ref(this.getBaseUrl(true));
-    baseRef.once("value", function (baseSnapshot) {
+    baseRef.once("value", (baseSnapshot) => {
       const data = baseSnapshot.val();
       cloneRef.set(data);
       if (callback) {
@@ -166,13 +307,14 @@ export class App extends React.Component<AppProps, AppState> {
   getBaseUrl(forceNonCloneUrl?:boolean) {
     const offeringId = escapeFirebaseKey(this.state.sharing_offering),
           groupId = escapeFirebaseKey(this.state.sharing_group),
+          itemId = escapeFirebaseKey(this.state.sharing_id),
           classId = escapeFirebaseKey(this.state.sharing_class)
 
     if (!this.isClone() || forceNonCloneUrl) {
       if (this.isPublication()) {
         return `publications/${this.state.sharing_publication}`
       }
-      const baseUrl = `classes/${classId}/groups/${groupId}/offerings/${offeringId}`
+      const baseUrl = `classes/${classId}/groups/${groupId}/offerings/${offeringId}/items/${itemId}/sheet/${this.state.sheetId}/grid/${this.state.gridId}`
       //console.log("Mugwumps BaseUrl:", baseUrl);
       return baseUrl
     }
@@ -289,9 +431,11 @@ export class App extends React.Component<AppProps, AppState> {
     if (snapshot) {
       let newData = snapshot.val()
       if (newData === null) {
-        newData = this.state.startingData
+        this.firebaseDataRef.set(assign({}, this.state.staticData, this.state.startingData))
       }
-      this.setState({data: assign({}, this.state.staticData, newData)})
+      else {
+        this.setState({data: assign({}, this.state.staticData, newData)})
+      }
     }
   }
 
@@ -299,9 +443,11 @@ export class App extends React.Component<AppProps, AppState> {
     if (snapshot) {
       let newVisibilityMap = snapshot.val()
       if (newVisibilityMap === null) {
-        newVisibilityMap = this.state.startingVisibilityMap
+        this.firebaseVisibilityRef.set(this.state.startingVisibilityMap)
       }
-      this.setState({visibilityMap: newVisibilityMap})
+      else {
+        this.setState({visibilityMap: newVisibilityMap})
+      }
     }
   }
 
@@ -309,16 +455,20 @@ export class App extends React.Component<AppProps, AppState> {
     if (this.state.editable && !this.state.staticData[key]) {
       const updates:any = {}
       updates[key] = value
-      this.checkUpdateForSideEffects(key, updates)
+      if (!this.state.rulesOff) {
+        this.checkUpdateForSideEffects(key, updates)
+      }
       this.firebaseDataRef.update(updates)
     }
   }
 
   setCellValues(updates:any) {
     if (this.state.editable) {
-      Object.keys(updates).forEach((key) => {
-        this.checkUpdateForSideEffects(key, updates)
-      })
+      if (!this.state.rulesOff) {
+        Object.keys(updates).forEach((key) => {
+          this.checkUpdateForSideEffects(key, updates)
+        })
+      }
       this.firebaseDataRef.update(updates)
     }
   }

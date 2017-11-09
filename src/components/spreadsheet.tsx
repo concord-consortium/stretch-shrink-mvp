@@ -149,7 +149,8 @@ export class SpreadsheetCell extends React.Component<SpreadsheetCellProps, Sprea
     const value = this.state.value.trim().length === 0 ? " " : this.state.value
     const isCurrentCell = this.isSameCell(this.props.cell, this.props.currentCell)
     const color = getColRGB(this.props.cell.col)
-    return <td className={isCurrentCell ? "current-cell" : ""} onClick={this.clicked} title={value} style={{color}}>{value}</td>
+    const className = `${isCurrentCell ? "current-cell" : ""} col-${this.props.cell.col}`
+    return <td className={className} onClick={this.clicked} title={value} style={{color}}>{value}</td>
   }
 }
 
@@ -297,7 +298,7 @@ export class Spreadsheet extends React.Component<SpreadsheetProps, SpreadsheetSt
   renderColHeader() {
     const header:JSX.Element[] = [<td key="spacer" className="row-header"></td>]
     for (let col=0; col < this.props.cols; col++) {
-      header.push(<td key={col} className="col-header">{String.fromCharCode(65 + col)}</td>)
+      header.push(<td key={col} className={`col-header col-${col}`}>{String.fromCharCode(65 + col)}</td>)
     }
     return <tr key="header">{header}</tr>
   }
@@ -312,7 +313,7 @@ export class Spreadsheet extends React.Component<SpreadsheetProps, SpreadsheetSt
 
   render() {
     return (
-      <div className="spreadsheet">
+      <div className="spreadsheet" id="spreadsheet">
         <table>
           <tbody>
             {this.renderRows()}
