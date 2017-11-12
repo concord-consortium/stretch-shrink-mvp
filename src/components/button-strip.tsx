@@ -31,22 +31,24 @@ export class ButtonStrip extends React.Component<ButtonStripProps, ButtonStripSt
     return `${row}:${col}`
   }
 
+  getPrefix(visible:boolean) {
+    return visible ? "Hide" : "Show"
+  }
+
   renderButton(col:number, visible:boolean, enabled:boolean) {
     const style = {color: getColRGB(col)}
     const clicked = () => {
       this.props.toggleVisibility(col)
     }
-    const prefix = visible ? "Hide" : "Unhide"
-    return <button key={col} disabled={!enabled} style={style} onClick={clicked}>{prefix} Hat {col - 1}</button>
+    return <button key={col} disabled={!enabled} style={style} onClick={clicked}>{this.getPrefix(visible)} Hat {col - 1}</button>
   }
 
   renderComparisonButton() {
     const visible = this.props.visibilityMap[ComparisonVisibilityIndex]
-    const prefix = visible ? "Hide" : "Unhide"
     const clicked = () => {
       this.props.toggleVisibility(0)
     }
-    return <button id="toggle-compare" onClick={clicked}>{prefix} Comparison Mug</button>
+    return <button id="toggle-compare" onClick={clicked}>{this.getPrefix(visible)} Comparison Mug</button>
   }
 
   renderVisibilityButtons() {
