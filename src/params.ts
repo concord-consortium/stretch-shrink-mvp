@@ -2,21 +2,23 @@ import { Context, Identifier, SharingParams, SharingParamName, SharingParamDefau
 import { parse, stringify } from "query-string";
 import { isEqual, clone } from "lodash";
 
-interface Params extends SharingParams {
+export interface Params extends SharingParams {
   sheetId?: Identifier;
   gridId?: Identifier;
-  rulesOff?: boolean;
+  rulesOff?: boolean|string;
+  ignoreIframe?: boolean|string;
 }
 
-type ParamName = SharingParamName |
+export type ParamName = SharingParamName |
   "sheetId" |
   "gridId" |
-  "rulesOff";
+  "rulesOff" |
+  "ignoreIframe"
 
 const params:Params={}
 const listeners:Function[] = [];
 
-const defaultParams = {
+export const defaultParams = {
   sharing_publication: SharingParamDefault,
   sharing_offering: SharingParamDefault,
   sharing_class: SharingParamDefault,
@@ -24,7 +26,8 @@ const defaultParams = {
   sharing_clone: SharingParamDefault,
   sheetId: "sA38WgGZ",
   gridId: "c23xKskj",
-  rulesOff: false
+  rulesOff: false,
+  ignoreIframe: false
 };
 
 export function paramsWithoutSharing() {
