@@ -7,35 +7,12 @@ import { parse, stringify } from "query-string"
 import { v1 as uuid  } from "uuid"
 import * as queryString from "query-string"
 import { SharingClient, SharableApp, Representation, Png, Context, Identifier, SharingParams, SharingParamName, SharingParamDefault, escapeFirebaseKey } from 'cc-sharing'
+import { Params, defaultParams, ParamName } from "../params"
 
 declare var gridApp:any
 
 import * as firebase from "firebase"
 const domToImage = require("dom-to-image")
-
-interface Params extends SharingParams {
-  sharing_id: string
-  sheetId: string
-  gridId: string
-  rulesOff: boolean|string
-}
-
-type ParamName = SharingParamName |
-  "sheetId" |
-  "gridId" |
-  "rulesOff"
-
-const defaultParams = {
-  sharing_publication: SharingParamDefault,
-  sharing_offering: SharingParamDefault,
-  sharing_class: SharingParamDefault,
-  sharing_group: SharingParamDefault,
-  sharing_id: SharingParamDefault,
-  sharing_clone: SharingParamDefault,
-  sheetId: "EW26mQ35",
-  gridId: "c23xKskj",
-  rulesOff: false
-}
 
 export interface AppProps {
 
@@ -57,6 +34,7 @@ export interface AppState {
   sharing_group: string
   sharing_id: string
   sharing_clone: string
+  ignoreIframe: boolean
 }
 
 export class App extends React.Component<AppProps, AppState> {
@@ -96,6 +74,7 @@ export class App extends React.Component<AppProps, AppState> {
       sharing_group: SharingParamDefault,
       sharing_id: SharingParamDefault,
       sharing_clone: SharingParamDefault,
+      ignoreIframe: false
     }
     firebase.initializeApp({
       apiKey: "AIzaSyC6xLM2k-aYH62O9UeskD-C1OtFtkM58sw",
@@ -143,8 +122,9 @@ export class App extends React.Component<AppProps, AppState> {
       }
     })
     params.rulesOff = params.rulesOff === "true"
+    params.ignoreIframe = params.ignoreIframe === "true"
     this.setParams(params, () => {
-      if (this.inIframe() && !this.isClone()) {
+      if (this.inIframe() && !this.state.ignoreIframe && !this.isClone()) {
         this.setupSharing(callback)
       }
       else {
@@ -155,6 +135,8 @@ export class App extends React.Component<AppProps, AppState> {
 
   setParams(params:any, callback?:Function) {
     this.setState(params, () => {
+      const hashParams = clone(params)
+      delete params.ignoreIframe
       window.location.hash = stringify(params)
       if (callback) {
         callback()
